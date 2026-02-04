@@ -1,6 +1,10 @@
 "use client";
 
-import { DAppKitProvider, ConnectButton } from "@mysten/dapp-kit-react";
+import {
+  DAppKitProvider,
+  ConnectButton,
+  ConnectModal,
+} from "@mysten/dapp-kit-react";
 import { dAppKit } from "@/lib/dapp-kit";
 
 export function DAppKitClientProvider({
@@ -11,4 +15,4 @@ export function DAppKitClientProvider({
   return <DAppKitProvider dAppKit={dAppKit}>{children}</DAppKitProvider>;
 }
 
-export { ConnectButton };
+export { ConnectButton, ConnectModal };
