@@ -7,7 +7,8 @@ import { TRPCReactProvider } from "@/trpc/react";
 
 export const metadata: Metadata = {
   title: "Sprinkle",
-  description: "Sprinkle is a platform for sprinkling bills on the Sui blockchain",
+  description:
+    "Sprinkle is a platform for sprinkling bills on the Sui blockchain",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
