@@ -54,9 +54,15 @@ export default function ZkLoginCallbackPage() {
     }
 
     try {
-      const { nonce, ephemeralKeyPair, maxEpoch, randomness } =
+      const { nonce, ephemeralPrivateKey, maxEpoch, randomness } =
         JSON.parse(zkLoginDataJSON);
-      authenticate({ idToken, nonce, ephemeralKeyPair, maxEpoch, randomness });
+      authenticate({
+        idToken,
+        nonce,
+        ephemeralPrivateKey,
+        maxEpoch,
+        randomness,
+      });
     } catch {
       setDataError("Invalid session data. Please try signing in again.");
     }

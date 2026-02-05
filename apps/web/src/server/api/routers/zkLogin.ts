@@ -31,7 +31,7 @@ export const zkLoginRouter = createTRPCRouter({
       z.object({
         idToken: z.string(),
         nonce: z.string(),
-        ephemeralKeyPair: z.custom<Ed25519Keypair>(),
+        ephemeralPrivateKey: z.string(),
         maxEpoch: z.number(),
         randomness: z.string(),
       }),
@@ -41,6 +41,9 @@ export const zkLoginRouter = createTRPCRouter({
       const masterSeed = env.MASTER_SEED;
       const zkProverUrl = env.ZK_PROVER_URL;
       const proverBackendKey = env.PROVER_BACKEND_KEY;
+      const ephemeralKeypair = Ed25519Keypair.fromSecretKey(
+        input.ephemeralPrivateKey,
+      );
 
       const decodedJwt = jwtDecode(input.idToken) as JwtPayload;
 
@@ -54,7 +57,7 @@ export const zkLoginRouter = createTRPCRouter({
       const zkLoginAddress = jwtToAddress(input.idToken, userSalt, false);
 
       const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(
-        input.ephemeralKeyPair.getPublicKey(),
+        ephemeralKeypair.getPublicKey(),
       );
 
       let zkProof;
@@ -89,7 +92,7 @@ export const zkLoginRouter = createTRPCRouter({
         zkProof,
         addressSeed,
         nonce: input.nonce,
-        ephemeralPrivateKey: input.ephemeralKeyPair.getSecretKey(),
+        ephemeralPrivateKey: ephemeralKeypair.getSecretKey(),
         maxEpoch: input.maxEpoch,
         randomness: input.randomness,
       };

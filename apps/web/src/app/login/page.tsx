@@ -35,7 +35,7 @@ export default function LoginPage() {
       "sprinkle-temp-zklogin",
       JSON.stringify({
         nonce,
-        ephemeralKeyPair,
+        ephemeralPrivateKey: ephemeralKeyPair.getSecretKey(),
         maxEpoch,
         randomness,
       }),
