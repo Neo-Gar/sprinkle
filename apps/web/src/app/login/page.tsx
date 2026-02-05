@@ -20,6 +20,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (account) {
+      setIsConnectModalOpen(false);
       router.push("/");
     }
   }, [account]);

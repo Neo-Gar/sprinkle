@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import Link from "next/link";
 import {
   Sidebar,
   SidebarContent,
@@ -10,7 +11,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { useCurrentAccount } from "@mysten/dapp-kit-react";
+import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import { formatAddress } from "@mysten/sui/utils";
 import {
   Select,
@@ -46,11 +47,14 @@ import type { Group } from "@/lib/types/group";
 import { useSidebarStore } from "@/lib/store/sidebarStore";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 const NEW_GROUP_VALUE = "__new_group__";
 
 export default function MainSidebar() {
+  const router = useRouter();
   const account = useCurrentAccount();
+  const { disconnectWallet } = useDAppKit();
   const { data: groups, refetch: refetchGroups } =
     api.group.getUserGroups.useQuery({
       address: account?.address ?? "",
@@ -213,12 +217,21 @@ export default function MainSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent className="flex flex-col gap-2">
               <Button
-                variant={"outline"}
+                variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2"
+                asChild
               >
-                <Plus className="size-4" />
-                Create bill
+                <Link
+                  href={
+                    selectedGroupId && selectedGroupId !== NEW_GROUP_VALUE
+                      ? `/bill/new?group=${selectedGroupId}`
+                      : "/bill/new"
+                  }
+                >
+                  <Plus className="size-4" />
+                  Create bill
+                </Link>
               </Button>
               <Button
                 variant={showAllBills ? "default" : "outline"}
@@ -251,6 +264,9 @@ export default function MainSidebar() {
                 variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2"
+                onClick={() =>
+                  disconnectWallet().then(() => router.push("/login"))
+                }
               >
                 <LogOut className="size-4" />
                 Log out
@@ -318,7 +334,8 @@ export default function MainSidebar() {
                 if (selectedGroup) {
                   const link = `http://localhost:3000/invite/${selectedGroup.id}?pass=${selectedGroup.password}`;
                   void navigator.clipboard.writeText(link);
-                  if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+                  if (copiedTimeoutRef.current)
+                    clearTimeout(copiedTimeoutRef.current);
                   setInviteLinkCopied(true);
                   copiedTimeoutRef.current = setTimeout(
                     () => setInviteLinkCopied(false),
