@@ -326,7 +326,7 @@ export default function MainSidebar() {
           </AlertDialogHeader>
           <Input
             readOnly
-            value={`http://localhost:3000/invite/${selectedGroup?.id}?pass=${selectedGroup?.password}`}
+            value={`https://sprinkle-split.vercel.app/invite/${selectedGroup?.id}?pass=${selectedGroup?.password}`}
             className="py-3 font-mono text-sm"
           />
           <div className="flex w-full flex-row items-center justify-between">
@@ -342,7 +342,7 @@ export default function MainSidebar() {
               className="w-[75%] gap-2"
               onClick={() => {
                 if (selectedGroup) {
-                  const link = `http://localhost:3000/invite/${selectedGroup.id}?pass=${selectedGroup.password}`;
+                  const link = `https://sprinkle-split.vercel.app/invite/${selectedGroup.id}?pass=${selectedGroup.password}`;
                   void navigator.clipboard.writeText(link);
                   if (copiedTimeoutRef.current)
                     clearTimeout(copiedTimeoutRef.current);
