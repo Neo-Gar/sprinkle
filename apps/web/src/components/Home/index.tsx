@@ -36,7 +36,7 @@ export default function Home() {
   );
 
   const filteredBills = useMemo(() => {
-    const list = useAllBillsQuery ? billsForUser ?? [] : groupBills ?? [];
+    const list = useAllBillsQuery ? (billsForUser ?? []) : (groupBills ?? []);
     return list.filter((bill) => bill.group != null);
   }, [useAllBillsQuery, billsForUser, groupBills]);
 
@@ -49,11 +49,7 @@ export default function Home() {
 
   const currency =
     filteredBills.length > 0 ? filteredBills[0]!.currency : "USD";
-  const title = showMyDebts
-    ? "My debts"
-    : showAllBills
-      ? "All Bills"
-      : "Bills";
+  const title = showMyDebts ? "My debts" : showAllBills ? "All Bills" : "Bills";
   const showEmptyState = !showAllBills && !showMyDebts && !selectedGroupId;
   const showPayAll =
     totalDebt > 0 && (showMyDebts || (!!selectedGroupId && !showAllBills));
@@ -92,7 +88,7 @@ export default function Home() {
               )}
             </div>
           ) : (
-            <div className="flex flex-wrap gap-6">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {filteredBills.map((bill) => (
                 <BillCard key={bill.id} bill={bill as Bill} />
               ))}
@@ -100,7 +96,7 @@ export default function Home() {
           )}
         </div>
         {showPayAll && (
-          <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-6">
+          <div className="absolute right-0 bottom-0 left-0 flex justify-center pb-6">
             <Button size="lg">
               Pay all {formatAmount(totalDebt, currency)}
             </Button>

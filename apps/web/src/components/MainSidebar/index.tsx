@@ -240,7 +240,7 @@ export default function MainSidebar() {
                 onClick={() => setShowAllBills(true)}
               >
                 <Receipt className="size-4" />
-                My bills
+                All bills
               </Button>
               <Button
                 variant={showMyDebts ? "default" : "outline"}
