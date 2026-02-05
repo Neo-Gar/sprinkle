@@ -61,16 +61,9 @@ export default function Home() {
   return (
     <SidebarProvider>
       <MainSidebar />
-      <SidebarInset>
+      <SidebarInset className="relative">
         <div className="flex h-full flex-col gap-6 p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="text-2xl font-semibold">{title}</h1>
-            {showPayAll && (
-              <Button size="lg" className="w-full sm:w-auto">
-                Pay all {formatAmount(totalDebt, currency)}
-              </Button>
-            )}
-          </div>
+          <h1 className="text-2xl font-semibold">{title}</h1>
           {showEmptyState ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-3">
               <p className="text-muted-foreground text-sm">
@@ -106,6 +99,13 @@ export default function Home() {
             </div>
           )}
         </div>
+        {showPayAll && (
+          <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-6">
+            <Button size="lg">
+              Pay all {formatAmount(totalDebt, currency)}
+            </Button>
+          </div>
+        )}
       </SidebarInset>
     </SidebarProvider>
   );
