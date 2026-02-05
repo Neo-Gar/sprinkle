@@ -47,7 +47,38 @@ export const groupRouter = createTRPCRouter({
   getGroup: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input }) => {
-      return await db.collection("groups").findOne({ id: input.id });
+      const doc = await db.collection("groups").findOne({ id: input.id });
+      if (!doc) return null;
+      const members = (doc.members as string[] | undefined) ?? [];
+      return {
+        id: doc.id as string,
+        name: doc.name as string,
+        iconId: doc.iconId as string,
+        membersCount: members.length,
+      };
+    }),
+  joinGroup: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        pass: z.string(),
+        address: z.string(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const group = await db.collection("groups").findOne({ id: input.id });
+      if (!group)
+        return { success: false as const, error: "not_found" };
+      if (group.password !== input.pass)
+        return { success: false as const, error: "wrong_password" };
+      const members = (group.members as string[]) ?? [];
+      if (members.includes(input.address))
+        return { success: true as const, alreadyMember: true };
+      await db.collection("groups").updateOne(
+        { id: input.id },
+        { $addToSet: { members: input.address } },
+      );
+      return { success: true as const, alreadyMember: false };
     }),
   getUserGroups: publicProcedure
     .input(z.object({ address: z.string() }))
