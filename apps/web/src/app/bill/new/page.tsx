@@ -41,7 +41,7 @@ function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
 
-function NewBillContent() {
+export default function NewBillPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const account = useCurrentAccount();
@@ -477,13 +477,5 @@ function NewBillContent() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-export default function NewBillPage() {
-  return (
-    <AppKitLayout>
-      <NewBillContent />
-    </AppKitLayout>
   );
 }

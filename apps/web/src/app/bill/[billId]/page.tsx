@@ -27,12 +27,16 @@ function formatAmount(amount: number, currency = "USD"): string {
   }).format(amount);
 }
 
-function BillDetailsContent() {
+export default function BillDetailsPage() {
   const params = useParams();
   const billId = params.billId as string;
   const account = useCurrentAccount();
 
-  const { data: bill, isLoading, error } = api.bill.getBill.useQuery(
+  const {
+    data: bill,
+    isLoading,
+    error,
+  } = api.bill.getBill.useQuery(
     { id: billId, userAddress: account?.address ?? "" },
     { enabled: !!billId },
   );
@@ -75,16 +79,20 @@ function BillDetailsContent() {
 
   const GroupIcon = bill.group ? getGroupIcon(bill.group.iconId) : Receipt;
   const splits = bill.splits ?? {};
-  const splitEntries = Object.entries(splits).filter(([, amount]) => amount > 0);
+  const splitEntries = Object.entries(splits).filter(
+    ([, amount]) => amount > 0,
+  );
   const payerLabel =
-    bill.payerAddress === account?.address ? "You" : formatAddress(bill.payerAddress);
+    bill.payerAddress === account?.address
+      ? "You"
+      : formatAddress(bill.payerAddress);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6">
       <Card className="w-full max-w-lg">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+            <div className="bg-muted flex size-10 items-center justify-center rounded-lg">
               <GroupIcon className="text-muted-foreground size-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -106,7 +114,7 @@ function BillDetailsContent() {
               <CheckCircle2 className="size-4 text-green-600 dark:text-green-500" />
               Paid the bill
             </h3>
-            <div className="rounded-lg border bg-muted/30 px-3 py-2">
+            <div className="bg-muted/30 rounded-lg border px-3 py-2">
               <span className="font-medium">{payerLabel}</span>
             </div>
           </div>
@@ -127,7 +135,8 @@ function BillDetailsContent() {
                     key={addr}
                     className={cn(
                       "flex items-center justify-between rounded-lg border px-3 py-2",
-                      addr === account?.address && "border-primary/30 bg-primary/5",
+                      addr === account?.address &&
+                        "border-primary/30 bg-primary/5",
                     )}
                   >
                     <span className="font-mono text-sm">
@@ -162,13 +171,5 @@ function BillDetailsContent() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-export default function BillDetailsPage() {
-  return (
-    <AppKitLayout>
-      <BillDetailsContent />
-    </AppKitLayout>
   );
 }
