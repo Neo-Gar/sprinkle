@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 export interface AuthStore {
   zkLoginAddress?: string;
   setZkLoginAddress: (address: string) => void;
+  logOut: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -12,6 +13,9 @@ export const useAuthStore = create<AuthStore>()(
       zkLoginAddress: undefined,
       setZkLoginAddress: (address) => {
         set({ zkLoginAddress: address });
+      },
+      logOut: () => {
+        set({ zkLoginAddress: undefined });
       },
     }),
     {

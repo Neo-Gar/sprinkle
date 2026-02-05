@@ -272,9 +272,11 @@ export default function MainSidebar() {
                 variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2"
-                onClick={() =>
-                  disconnectWallet().then(() => router.push("/login"))
-                }
+                onClick={() => {
+                  disconnectWallet();
+                  authStore.logOut();
+                  router.push("/login");
+                }}
               >
                 <LogOut className="size-4" />
                 Log out
