@@ -6,7 +6,15 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**"],
-      "env": ["MONGODB_URI", "MONGODB_DB"]
+      "env": [
+        "MONGODB_URI",
+        "MONGODB_DB",
+        "MASTER_SEED",
+        "ZK_PROVER_URL",
+        "PROVER_BACKEND_KEY",
+        "JWE_PRIVATE_KEY_B64",
+        "JWE_PUBLIC_KEY_B64"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
