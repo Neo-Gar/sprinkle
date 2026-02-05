@@ -1,9 +1,14 @@
 import { AppKitLayout } from "@/context/AppKitLayout";
+import { AuthContext } from "@/context/AuthContext";
 
 export default function ZkLoginLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppKitLayout>{children}</AppKitLayout>;
+  return (
+    <AppKitLayout>
+      <AuthContext>{children}</AuthContext>
+    </AppKitLayout>
+  );
 }
