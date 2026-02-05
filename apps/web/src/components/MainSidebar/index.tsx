@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   Sidebar,
@@ -71,7 +71,9 @@ export default function MainSidebar() {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addressCopiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { mutate: updateGroup } = api.group.updateGroup.useMutation();
   const { mutateAsync: createGroup } = api.group.createGroup.useMutation();
 
@@ -128,6 +130,27 @@ export default function MainSidebar() {
     if (!selectedGroup) return;
     void navigator.clipboard.writeText(selectedGroup.inviteLink);
   }, [selectedGroup]);
+
+  const handleCopyAddress = useCallback(() => {
+    if (!userAddress) return;
+    void navigator.clipboard.writeText(userAddress);
+    if (addressCopiedTimeoutRef.current)
+      clearTimeout(addressCopiedTimeoutRef.current);
+    setAddressCopied(true);
+    addressCopiedTimeoutRef.current = setTimeout(
+      () => setAddressCopied(false),
+      2000,
+    );
+  }, [userAddress]);
+
+  useEffect(
+    () => () => {
+      if (addressCopiedTimeoutRef.current) {
+        clearTimeout(addressCopiedTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   return (
     <>
@@ -284,10 +307,32 @@ export default function MainSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="border-border mr-auto flex w-full flex-row items-center justify-center gap-5 border-t p-5">
-          <span className="text-base font-medium">
-            {userAddress ? formatAddress(userAddress) : "No account"}
-          </span>
+        <SidebarFooter className="border-border mr-auto flex w-full flex-row items-center justify-center border-t p-5">
+          <button
+            type="button"
+            onClick={handleCopyAddress}
+            disabled={!userAddress}
+            className={cn(
+              "flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-base font-medium transition-colors",
+              userAddress &&
+                "hover:bg-muted active:bg-muted/80 cursor-pointer",
+              !userAddress && "cursor-default opacity-70",
+            )}
+            title={userAddress ? "Copy address" : undefined}
+          >
+            {addressCopied ? (
+              <span className="text-primary">Copied</span>
+            ) : userAddress ? (
+              <>
+                <span className="truncate">
+                  {formatAddress(userAddress)}
+                </span>
+                <Copy className="text-muted-foreground size-3.5 shrink-0" />
+              </>
+            ) : (
+              "No account"
+            )}
+          </button>
         </SidebarFooter>
       </Sidebar>
 
