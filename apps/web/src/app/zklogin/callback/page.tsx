@@ -1,20 +1,32 @@
 "use client";
 
 import { api } from "@/trpc/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 
+function getIdTokenFromHash(): string | null {
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash?.slice(1);
+  if (!hash) return null;
+  return new URLSearchParams(hash).get("id_token");
+}
+
 export default function ZkLoginCallbackPage() {
   const router = useRouter();
   const authStore = useAuthStore();
-  const params = useSearchParams();
-  const idToken = params.get("id_token");
+  const [idToken, setIdToken] = useState<string | null>(null);
+  const [hashChecked, setHashChecked] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
   const startedRef = useRef(false);
+
+  useEffect(() => {
+    setIdToken(getIdTokenFromHash());
+    setHashChecked(true);
+  }, []);
 
   const {
     mutate: authenticate,
@@ -50,14 +62,16 @@ export default function ZkLoginCallbackPage() {
     }
   }, [idToken, authenticate]);
 
-  const hasError = !idToken || dataError || isError;
-  const errorMessage = !idToken
-    ? "No ID token received"
-    : dataError
-      ? dataError
-      : isError
-        ? (error?.message ?? "Sign in failed")
-        : null;
+  const hasError = hashChecked && (!idToken || dataError || isError);
+  const errorMessage = !hashChecked
+    ? null
+    : !idToken
+      ? "No ID token received"
+      : dataError
+        ? dataError
+        : isError
+          ? (error?.message ?? "Sign in failed")
+          : null;
 
   if (hasError && errorMessage) {
     return (
