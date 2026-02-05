@@ -20,6 +20,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@mysten/bcs':
+        specifier: ^2.0.1
+        version: 2.0.1
       '@mysten/dapp-kit-react':
         specifier: ^1.0.1
         version: 1.0.1(@mysten/sui@2.2.0(typescript@5.9.2))(@types/react@19.2.11)(react@19.2.4)(typescript@5.9.2)

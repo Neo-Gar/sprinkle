@@ -13,7 +13,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle, CheckCircle2, Loader2, Receipt } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ExternalLink,
+  Loader2,
+  Receipt,
+} from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/authStore";
@@ -156,19 +162,27 @@ export default function BillDetailsPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-2 pt-2">
+          <div className="flex flex-col gap-4 pt-2">
             {bill.userAmount > 0 && (
               <Button className="w-full" size="lg">
                 Pay {formatAmount(bill.userAmount, bill.currency)}
               </Button>
             )}
-            <div className="flex gap-2">
+            <div className="flex gap-4">
               <Button asChild variant="outline" className="flex-1">
                 <Link href="/">Back to bills</Link>
               </Button>
-              {bill.groupId && (
+              {bill.transactionDigest && (
                 <Button asChild variant="secondary" className="flex-1">
-                  <Link href={`/?group=${bill.groupId}`}>Open group</Link>
+                  <Link
+                    href={`https://suiscan.xyz/testnet/tx/${bill.transactionDigest}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2"
+                  >
+                    <ExternalLink className="size-4" />
+                    Transaction link
+                  </Link>
                 </Button>
               )}
             </div>

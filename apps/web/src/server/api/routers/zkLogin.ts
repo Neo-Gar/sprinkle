@@ -10,7 +10,7 @@ import { jwtDecode } from "jwt-decode";
 import { TRPCError } from "@trpc/server";
 import { generateUserSalt, getZkProof } from "@/lib/zkLogin";
 import { cookies } from "next/headers";
-import { generateJWE } from "@/lib/jwe";
+import { decryptJWE, generateJWE } from "@/lib/jwe";
 import { ZK_LOGIN_JWE_EXPIRATION_SECONDS } from "@/lib/constants";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 
@@ -89,7 +89,7 @@ export const zkLoginRouter = createTRPCRouter({
       ).toString();
 
       const zkLoginData = {
-        zkProof,
+        zkProof: JSON.stringify(zkProof),
         addressSeed,
         nonce: input.nonce,
         ephemeralPrivateKey: ephemeralKeypair.getSecretKey(),
@@ -115,4 +115,35 @@ export const zkLoginRouter = createTRPCRouter({
         zkLoginAddress,
       };
     }),
+  getZkLoginData: publicProcedure.query(async () => {
+    const cookieStore = await cookies();
+    const zkLoginJWE = cookieStore.get("zkLoginJWE");
+    if (!zkLoginJWE) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "No zkLoginJWE found",
+      });
+    }
+    const zkLoginData = await decryptJWE({
+      jweToken: zkLoginJWE.value,
+      validateExpiration: true,
+      expirationSeconds: ZK_LOGIN_JWE_EXPIRATION_SECONDS,
+    });
+    if (!zkLoginData) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Invalid zkLoginJWE",
+      });
+    }
+    const zkProof = JSON.parse(zkLoginData.zkProof);
+
+    return {
+      zkProof: zkProof as any,
+      addressSeed: zkLoginData.addressSeed as string,
+      nonce: zkLoginData.nonce as string,
+      ephemeralPrivateKey: zkLoginData.ephemeralPrivateKey as string,
+      maxEpoch: zkLoginData.maxEpoch as number,
+      randomness: zkLoginData.randomness as string,
+    };
+  }),
 });

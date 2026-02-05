@@ -25,6 +25,7 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string(),
     NEXT_PUBLIC_AUTH_CALLBACK_URL: z.string(),
+    NEXT_PUBLIC_SUI_PACKAGE_ID: z.string(),
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
   },
 
@@ -43,6 +44,7 @@ export const env = createEnv({
     PROVER_BACKEND_KEY: process.env.PROVER_BACKEND_KEY,
     JWE_PUBLIC_KEY_B64: process.env.JWE_PUBLIC_KEY_B64,
     JWE_PRIVATE_KEY_B64: process.env.JWE_PRIVATE_KEY_B64,
+    NEXT_PUBLIC_SUI_PACKAGE_ID: process.env.NEXT_PUBLIC_SUI_PACKAGE_ID,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**

@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@mysten/bcs": "^2.0.1",
     "@mysten/dapp-kit-react": "^1.0.1",
     "@mysten/sui": "^2.2.0",
     "@t3-oss/env-nextjs": "^0.12.0",

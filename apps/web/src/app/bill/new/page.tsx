@@ -29,6 +29,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/authStore";
+import { useSui } from "@/hooks/useSui";
+import { nanoid } from "nanoid";
 
 type SplitMode = "percent" | "amount";
 
@@ -44,6 +46,7 @@ function round2(n: number) {
 export default function NewBillPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
   const account = useCurrentAccount();
   const authStore = useAuthStore();
   const userAddress = authStore.zkLoginAddress
@@ -51,6 +54,10 @@ export default function NewBillPage() {
     : account?.address
       ? account.address
       : "";
+  const { createBill: createSuiBill } = useSui({
+    provider: authStore.zkLoginAddress ? "zklogin" : "wallet",
+  });
+  const utils = api.useUtils();
   const setSelectedGroupId = useSidebarStore((s) => s.setSelectedGroupId);
   const setShowAllBills = useSidebarStore((s) => s.setShowAllBills);
 
@@ -167,24 +174,41 @@ export default function NewBillPage() {
       if (result.success) {
         setShowAllBills(false);
         setSelectedGroupId(groupId);
+        utils.bill.getBills.invalidate();
         router.replace("/");
       }
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userAddress || !isValidTotal || !splitsMatchTotal) return;
     const splitsRecord: Record<string, number> = {};
     for (const [addr, amount] of Object.entries(computedAmounts)) {
       if (amount > 0) splitsRecord[addr] = amount;
     }
+
+    const billId = nanoid();
+
+    const result = await createSuiBill({
+      billId,
+      debtors: nonPayerMembers,
+      values: Object.values(computedAmounts),
+    });
+
+    const txDigest =
+      (result as { Transaction?: { digest?: string } })?.Transaction?.digest ??
+      (result as { digest?: string })?.digest ??
+      undefined;
+
     createBill.mutate({
+      billId,
       groupId,
       description: description.trim(),
       totalAmount: totalNum,
       payerAddress,
       splits: splitsRecord,
+      transactionDigest: txDigest,
     });
   };
 
