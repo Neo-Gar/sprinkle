@@ -48,16 +48,24 @@ import { useSidebarStore } from "@/lib/store/sidebarStore";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/lib/store/authStore";
 
 const NEW_GROUP_VALUE = "__new_group__";
 
 export default function MainSidebar() {
-  const router = useRouter();
   const account = useCurrentAccount();
+  const authStore = useAuthStore();
+  const userAddress = authStore.zkLoginAddress
+    ? authStore.zkLoginAddress
+    : account?.address
+      ? account.address
+      : "";
+
+  const router = useRouter();
   const { disconnectWallet } = useDAppKit();
   const { data: groups, refetch: refetchGroups } =
     api.group.getUserGroups.useQuery({
-      address: account?.address ?? "",
+      address: userAddress,
     });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
@@ -103,17 +111,17 @@ export default function MainSidebar() {
 
   const handleCreateGroup = useCallback(
     async (data: { name: string; iconId: string }) => {
-      if (!account?.address) return;
+      if (!userAddress) return;
       const created = await createGroup({
         name: data.name,
         iconId: data.iconId,
-        creatorAddress: account.address,
+        creatorAddress: userAddress,
       });
       await refetchGroups();
       setSelectedGroupId(created.id);
       setCreateGroupOpen(false);
     },
-    [account?.address, createGroup, setSelectedGroupId],
+    [userAddress, createGroup, setSelectedGroupId],
   );
 
   const handleCopyInviteLink = useCallback(() => {
@@ -276,7 +284,7 @@ export default function MainSidebar() {
         </SidebarContent>
         <SidebarFooter className="border-border mr-auto flex w-full flex-row items-center justify-center gap-5 border-t p-5">
           <span className="text-base font-medium">
-            {account?.address ? formatAddress(account.address) : "No account"}
+            {userAddress ? formatAddress(userAddress) : "No account"}
           </span>
         </SidebarFooter>
       </Sidebar>

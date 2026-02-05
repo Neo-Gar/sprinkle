@@ -10,6 +10,7 @@ import { Button } from "../ui/button";
 import type { Bill } from "@/lib/types/bill";
 import { useSidebarStore } from "@/lib/store/sidebarStore";
 import { api } from "@/trpc/react";
+import { useAuthStore } from "@/lib/store/authStore";
 
 function formatAmount(amount: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
@@ -22,7 +23,13 @@ function formatAmount(amount: number, currency = "USD"): string {
 
 export default function Home() {
   const account = useCurrentAccount();
-  const userAddress = account?.address ?? "";
+  const authStore = useAuthStore();
+  const userAddress = authStore.zkLoginAddress
+    ? authStore.zkLoginAddress
+    : account?.address
+      ? account.address
+      : "";
+
   const { selectedGroupId, showAllBills, showMyDebts } = useSidebarStore();
 
   const useAllBillsQuery = showAllBills || showMyDebts;

@@ -3,7 +3,6 @@
 import { useParams } from "next/navigation";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { api } from "@/trpc/react";
-import { AppKitLayout } from "@/context/AppKitLayout";
 import { getGroupIcon } from "@/lib/groupIcons";
 import { formatAddress } from "@mysten/sui/utils";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import {
 import { AlertCircle, CheckCircle2, Loader2, Receipt } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/lib/store/authStore";
 
 function formatAmount(amount: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
@@ -31,13 +31,19 @@ export default function BillDetailsPage() {
   const params = useParams();
   const billId = params.billId as string;
   const account = useCurrentAccount();
+  const authStore = useAuthStore();
+  const userAddress = authStore.zkLoginAddress
+    ? authStore.zkLoginAddress
+    : account?.address
+      ? account.address
+      : "";
 
   const {
     data: bill,
     isLoading,
     error,
   } = api.bill.getBill.useQuery(
-    { id: billId, userAddress: account?.address ?? "" },
+    { id: billId, userAddress },
     { enabled: !!billId },
   );
 
@@ -83,7 +89,7 @@ export default function BillDetailsPage() {
     ([, amount]) => amount > 0,
   );
   const payerLabel =
-    bill.payerAddress === account?.address
+    bill.payerAddress === userAddress
       ? "You"
       : formatAddress(bill.payerAddress);
 
@@ -135,12 +141,11 @@ export default function BillDetailsPage() {
                     key={addr}
                     className={cn(
                       "flex items-center justify-between rounded-lg border px-3 py-2",
-                      addr === account?.address &&
-                        "border-primary/30 bg-primary/5",
+                      addr === userAddress && "border-primary/30 bg-primary/5",
                     )}
                   >
                     <span className="font-mono text-sm">
-                      {addr === account?.address ? "You" : formatAddress(addr)}
+                      {addr === userAddress ? "You" : formatAddress(addr)}
                     </span>
                     <span className="font-medium tabular-nums">
                       {formatAmount(amount, bill.currency)}

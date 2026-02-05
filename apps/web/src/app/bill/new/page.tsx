@@ -3,7 +3,6 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { api } from "@/trpc/react";
-import { AppKitLayout } from "@/context/AppKitLayout";
 import { useSidebarStore } from "@/lib/store/sidebarStore";
 import { getGroupIcon } from "@/lib/groupIcons";
 import { formatAddress } from "@mysten/sui/utils";
@@ -29,6 +28,7 @@ import { AlertCircle, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/lib/store/authStore";
 
 type SplitMode = "percent" | "amount";
 
@@ -45,6 +45,12 @@ export default function NewBillPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const account = useCurrentAccount();
+  const authStore = useAuthStore();
+  const userAddress = authStore.zkLoginAddress
+    ? authStore.zkLoginAddress
+    : account?.address
+      ? account.address
+      : "";
   const setSelectedGroupId = useSidebarStore((s) => s.setSelectedGroupId);
   const setShowAllBills = useSidebarStore((s) => s.setShowAllBills);
 
@@ -52,8 +58,8 @@ export default function NewBillPage() {
 
   const { data: groups, isLoading: groupsLoading } =
     api.group.getUserGroups.useQuery(
-      { address: account?.address ?? "" },
-      { enabled: !!account?.address },
+      { address: userAddress },
+      { enabled: !!userAddress },
     );
 
   const [groupId, setGroupId] = useState("");
@@ -95,12 +101,12 @@ export default function NewBillPage() {
   }, [preselectedGroupId, groupList]);
 
   useEffect(() => {
-    if (account?.address && members.includes(account.address)) {
-      setPayerAddress(account.address);
+    if (userAddress && members.includes(userAddress)) {
+      setPayerAddress(userAddress);
     } else if (members[0]) {
       setPayerAddress(members[0]);
     }
-  }, [account?.address, members]);
+  }, [userAddress, members]);
 
   useEffect(() => {
     if (members.length === 0) return;
@@ -168,7 +174,7 @@ export default function NewBillPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!account?.address || !isValidTotal || !splitsMatchTotal) return;
+    if (!userAddress || !isValidTotal || !splitsMatchTotal) return;
     const splitsRecord: Record<string, number> = {};
     for (const [addr, amount] of Object.entries(computedAmounts)) {
       if (amount > 0) splitsRecord[addr] = amount;
@@ -182,7 +188,7 @@ export default function NewBillPage() {
     });
   };
 
-  if (!account) {
+  if (!userAddress) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
         <AlertCircle className="text-muted-foreground size-12" />
@@ -309,14 +315,12 @@ export default function NewBillPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {[
-                            account?.address,
-                            ...members.filter(
-                              (addr) => addr !== account?.address,
-                            ),
+                            userAddress,
+                            ...members.filter((addr) => addr !== userAddress),
                           ].map((addr) => (
                             <SelectItem key={addr} value={addr}>
                               <span className="flex items-center gap-2">
-                                {addr === account?.address ? (
+                                {addr === userAddress ? (
                                   <span className="text-primary font-medium">
                                     You
                                   </span>
@@ -366,7 +370,7 @@ export default function NewBillPage() {
                                 className="flex flex-wrap items-center gap-2 rounded-lg border p-3"
                               >
                                 <span className="w-full shrink-0 text-sm font-medium sm:w-auto">
-                                  {addr === account?.address ? (
+                                  {addr === userAddress ? (
                                     <span className="bg-primary/15 text-primary inline-flex items-center rounded-md px-2 py-0.5">
                                       You
                                     </span>

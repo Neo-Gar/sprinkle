@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { AlertCircle, Loader2, Wallet } from "lucide-react";
 import Link from "next/link";
+import { useAuthStore } from "@/lib/store/authStore";
 
 export default function InvitePage() {
   const params = useParams();
@@ -24,6 +25,12 @@ export default function InvitePage() {
   const groupId = params.groupId as string;
   const pass = searchParams.get("pass") ?? "";
   const account = useCurrentAccount();
+  const authStore = useAuthStore();
+  const userAddress = authStore.zkLoginAddress
+    ? authStore.zkLoginAddress
+    : account?.address
+      ? account.address
+      : "";
   const setSelectedGroupId = useSidebarStore((s) => s.setSelectedGroupId);
   const setShowAllBills = useSidebarStore((s) => s.setShowAllBills);
   const setIsConnectModalOpen = useConnectModalStore(
@@ -42,9 +49,9 @@ export default function InvitePage() {
       if (result.success) {
         setShowAllBills(false);
         setSelectedGroupId(groupId);
-        if (account?.address) {
+        if (userAddress) {
           await utils.group.getUserGroups.invalidate({
-            address: account.address,
+            address: userAddress,
           });
         }
         router.replace("/");
@@ -144,7 +151,7 @@ export default function InvitePage() {
             </div>
           )}
 
-          {!account ? (
+          {!userAddress ? (
             <div className="flex flex-col gap-3">
               <p className="text-muted-foreground text-center text-sm">
                 Connect your wallet to join this group.
@@ -165,7 +172,7 @@ export default function InvitePage() {
                 joinGroup.mutate({
                   id: groupId,
                   pass,
-                  address: account.address,
+                  address: userAddress,
                 })
               }
             >

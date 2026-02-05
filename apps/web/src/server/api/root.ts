@@ -1,5 +1,6 @@
 import { groupRouter } from "@/server/api/routers/group";
 import { billRouter } from "@/server/api/routers/bill";
+import { zkLoginRouter } from "@/server/api/routers/zkLogin";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -10,6 +11,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 export const appRouter = createTRPCRouter({
   group: groupRouter,
   bill: billRouter,
+  zkLogin: zkLoginRouter,
 });
 
 // export type definition of API
