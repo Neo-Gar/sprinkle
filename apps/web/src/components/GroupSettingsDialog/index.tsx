@@ -24,7 +24,9 @@ type GroupSettingsDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   group: Group | null;
-  onSave: (groupId: string, data: { name: string; iconId: string }) => void;
+  onSave?: (groupId: string, data: { name: string; iconId: string }) => void;
+  /** When set, dialog works in create mode (group can be null); on Save calls onCreate */
+  onCreate?: (data: { name: string; iconId: string }) => void;
 };
 
 export default function GroupSettingsDialog({
@@ -32,33 +34,48 @@ export default function GroupSettingsDialog({
   onOpenChange,
   group,
   onSave,
+  onCreate,
 }: GroupSettingsDialogProps) {
   const [name, setName] = useState("");
   const [iconId, setIconId] = useState<string>("utensils");
+
+  const isCreateMode = !!onCreate;
 
   useEffect(() => {
     if (group) {
       setName(group.name);
       setIconId(group.iconId);
+    } else if (isCreateMode) {
+      setName("");
+      setIconId("utensils");
     }
-  }, [group, open]);
+  }, [group, isCreateMode, open]);
 
   const Icon = getGroupIcon(iconId);
 
   const handleSave = () => {
-    if (group) {
-      onSave(group.id, { name: name.trim(), iconId });
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+    if (isCreateMode && onCreate) {
+      onCreate({ name: trimmedName, iconId });
+      onOpenChange(false);
+      return;
+    }
+    if (group && onSave) {
+      onSave(group.id, { name: trimmedName, iconId });
       onOpenChange(false);
     }
   };
 
-  if (!group) return null;
+  if (!group && !isCreateMode) return null;
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="sm:max-w-md" size="default">
         <AlertDialogHeader>
-          <AlertDialogTitle>Group settings</AlertDialogTitle>
+          <AlertDialogTitle>
+            {isCreateMode ? "Create group" : "Group settings"}
+          </AlertDialogTitle>
         </AlertDialogHeader>
 
         <div className="flex flex-col gap-4 py-2">
@@ -68,7 +85,7 @@ export default function GroupSettingsDialog({
               <GroupCard
                 icon={Icon}
                 name={name || "Group name"}
-                membersCount={group.membersCount}
+                membersCount={group?.membersCount ?? 0}
               />
             </div>
           </div>
@@ -115,7 +132,9 @@ export default function GroupSettingsDialog({
 
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave} disabled={!name.trim()}>
+            {isCreateMode ? "Create" : "Save"}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

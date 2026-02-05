@@ -19,77 +19,90 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Button } from "../ui/button";
 import GroupCard from "../GroupCard";
 import GroupSettingsDialog from "../GroupSettingsDialog";
-import { ChevronDown, Link2, LogOut, Receipt, Settings } from "lucide-react";
+import {
+  CreditCard,
+  Icon,
+  Link2,
+  LogOut,
+  Plus,
+  Receipt,
+  Settings,
+} from "lucide-react";
 import { getGroupIcon } from "@/lib/groupIcons";
 import type { Group } from "@/lib/types/group";
 import { useSidebarStore } from "@/lib/store/sidebarStore";
+import { api } from "@/trpc/react";
+import { cn } from "@/lib/utils";
 
-const MOCK_GROUPS: Group[] = [
-  {
-    id: "1",
-    name: "Apartment",
-    iconId: "home",
-    membersCount: 3,
-    inviteLink: "https://sprinkle.app/invite/abc123",
-  },
-  {
-    id: "2",
-    name: "Trip",
-    iconId: "pizza",
-    membersCount: 5,
-    inviteLink: "https://sprinkle.app/invite/def456",
-  },
-  {
-    id: "3",
-    name: "Office",
-    iconId: "users",
-    membersCount: 8,
-    inviteLink: "https://sprinkle.app/invite/ghi789",
-  },
-];
+const NEW_GROUP_VALUE = "__new_group__";
 
 export default function MainSidebar() {
   const account = useCurrentAccount();
-  const [groups, setGroups] = useState<Group[]>(MOCK_GROUPS);
+  const { data: groups, refetch: refetchGroups } =
+    api.group.getUserGroups.useQuery({
+      address: account?.address ?? "",
+    });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  
-  const { selectedGroupId, showAllBills, setSelectedGroupId, setShowAllBills } =
-    useSidebarStore();
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const { mutate: updateGroup } = api.group.updateGroup.useMutation();
+  const { mutateAsync: createGroup } = api.group.createGroup.useMutation();
 
-  const selectedGroup = groups.find((g) => g.id === selectedGroupId);
+  const {
+    selectedGroupId,
+    showAllBills,
+    showMyDebts,
+    setShowMyDebts,
+    setSelectedGroupId,
+    setShowAllBills,
+  } = useSidebarStore();
+
+  const selectedGroup = groups && groups.find((g) => g.id === selectedGroupId);
+  const isNewGroupSelected = selectedGroupId === NEW_GROUP_VALUE;
 
   const handleGroupChange = useCallback(
-    (groupId: string) => {
-      setSelectedGroupId(groupId || null);
+    (value: string) => {
+      if (value === NEW_GROUP_VALUE) {
+        setSelectedGroupId(NEW_GROUP_VALUE);
+        setCreateGroupOpen(true);
+        return;
+      }
+      setSelectedGroupId(value || null);
     },
     [setSelectedGroupId],
+  );
+
+  const handleCreateGroupClose = useCallback(
+    (open: boolean) => {
+      setCreateGroupOpen(open);
+      if (!open && isNewGroupSelected) {
+        setSelectedGroupId(null);
+      }
+    },
+    [isNewGroupSelected, setSelectedGroupId],
+  );
+
+  const handleCreateGroup = useCallback(
+    async (data: { name: string; iconId: string }) => {
+      if (!account?.address) return;
+      const created = await createGroup({
+        name: data.name,
+        iconId: data.iconId,
+        creatorAddress: account.address,
+      });
+      await refetchGroups();
+      setSelectedGroupId(created.id);
+      setCreateGroupOpen(false);
+    },
+    [account?.address, createGroup, setSelectedGroupId],
   );
 
   const handleCopyInviteLink = useCallback(() => {
     if (!selectedGroup) return;
     void navigator.clipboard.writeText(selectedGroup.inviteLink);
   }, [selectedGroup]);
-
-  const handleSaveGroup = useCallback(
-    (groupId: string, data: { name: string; iconId: string }) => {
-      setGroups((prev) =>
-        prev.map((g) =>
-          g.id === groupId
-            ? { ...g, name: data.name, iconId: data.iconId as Group["iconId"] }
-            : g,
-        ),
-      );
-    },
-    [],
-  );
 
   return (
     <>
@@ -101,14 +114,22 @@ export default function MainSidebar() {
           >
             <SelectTrigger
               size="default"
-              className="h-auto! w-full! py-2 [&>svg]:ml-auto"
+              className={cn(
+                "h-auto! w-full! [&>svg]:ml-auto",
+                selectedGroup ? "py-2" : "py-8",
+              )}
             >
-              <SelectValue placeholder="Select group">
-                {selectedGroup ? (
+              <SelectValue placeholder="Select group or create new">
+                {isNewGroupSelected ? (
+                  <div className="flex w-full items-center gap-2">
+                    <Plus className="text-muted-foreground size-5 shrink-0" />
+                    <span className="font-medium">New Group</span>
+                  </div>
+                ) : selectedGroup ? (
                   <GroupCard
                     icon={getGroupIcon(selectedGroup.iconId)}
                     name={selectedGroup.name}
-                    membersCount={selectedGroup.membersCount}
+                    membersCount={selectedGroup.members.length}
                   />
                 ) : null}
               </SelectValue>
@@ -117,19 +138,32 @@ export default function MainSidebar() {
               align="start"
               className="min-w-(--radix-select-trigger-width)"
             >
-              {groups.map((g) => (
-                <SelectItem key={g.id} value={g.id}>
-                  <GroupCard
-                    icon={getGroupIcon(g.iconId)}
-                    name={g.name}
-                    membersCount={g.membersCount}
-                  />
-                </SelectItem>
-              ))}
+              {groups &&
+                groups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    <GroupCard
+                      icon={getGroupIcon(g.iconId)}
+                      name={g.name}
+                      membersCount={g.members.length}
+                    />
+                  </SelectItem>
+                ))}
+              <SelectItem value={NEW_GROUP_VALUE}>
+                <div className={"flex w-full flex-row items-center gap-2"}>
+                  <div className="flex h-full w-1/3 min-w-0 flex-col items-center justify-center p-4">
+                    <Plus className="size-10 shrink-0 object-center" />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 p-2">
+                    <span className="truncate text-base font-medium">
+                      New Group
+                    </span>
+                  </div>
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
 
-          {selectedGroup && (
+          {selectedGroup && !isNewGroupSelected && (
             <SidebarGroup className="mt-3 flex flex-col gap-2 p-0">
               <SidebarGroupLabel asChild>
                 <span className="text-foreground text-base font-medium">
@@ -166,6 +200,14 @@ export default function MainSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent className="flex flex-col gap-2">
               <Button
+                variant={"outline"}
+                size="sm"
+                className="w-full justify-start gap-2"
+              >
+                <Plus className="size-4" />
+                Create bill
+              </Button>
+              <Button
                 variant={showAllBills ? "default" : "outline"}
                 size="sm"
                 className="w-full justify-start gap-2"
@@ -173,6 +215,15 @@ export default function MainSidebar() {
               >
                 <Receipt className="size-4" />
                 My bills
+              </Button>
+              <Button
+                variant={showMyDebts ? "default" : "outline"}
+                size="sm"
+                className="w-full justify-start gap-2"
+                onClick={() => setShowMyDebts(true)}
+              >
+                <CreditCard className="size-4" />
+                My debts
               </Button>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -204,8 +255,17 @@ export default function MainSidebar() {
       <GroupSettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
-        group={selectedGroup ?? null}
-        onSave={handleSaveGroup}
+        group={(selectedGroup as unknown as Group) ?? null}
+        onSave={(groupId, data) =>
+          updateGroup({ id: groupId, name: data.name, iconId: data.iconId })
+        }
+      />
+
+      <GroupSettingsDialog
+        open={createGroupOpen}
+        onOpenChange={handleCreateGroupClose}
+        group={null}
+        onCreate={handleCreateGroup}
       />
     </>
   );

@@ -3,14 +3,23 @@ import { create } from "zustand";
 export interface SidebarStore {
   selectedGroupId: string | null;
   showAllBills: boolean;
+  showMyDebts: boolean;
   setSelectedGroupId: (id: string | null) => void;
   setShowAllBills: (show: boolean) => void;
+  setShowMyDebts: (show: boolean) => void;
 }
 
-export const useSidebarStore = create<SidebarStore>((set) => ({
+export const useSidebarStore = create<SidebarStore>((set, get) => ({
   selectedGroupId: null,
   showAllBills: false,
+  showMyDebts: false,
   setSelectedGroupId: (id) => set({ selectedGroupId: id, showAllBills: false }),
-  setShowAllBills: (show) =>
-    set({ showAllBills: show, selectedGroupId: show ? null : null }),
+  setShowAllBills: (show) => {
+    if (get().showMyDebts) set({ showMyDebts: false });
+    set({ showAllBills: show, selectedGroupId: show ? null : null });
+  },
+  setShowMyDebts: (show) => {
+    if (get().showAllBills) set({ showAllBills: false });
+    set({ showMyDebts: show });
+  },
 }));
