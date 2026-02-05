@@ -118,32 +118,43 @@ export const zkLoginRouter = createTRPCRouter({
   getZkLoginData: publicProcedure.query(async () => {
     const cookieStore = await cookies();
     const zkLoginJWE = cookieStore.get("zkLoginJWE");
-    if (!zkLoginJWE) {
+    if (!zkLoginJWE?.value) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "No zkLoginJWE found",
       });
     }
-    const zkLoginData = await decryptJWE({
+    const payload = await decryptJWE({
       jweToken: zkLoginJWE.value,
       validateExpiration: true,
       expirationSeconds: ZK_LOGIN_JWE_EXPIRATION_SECONDS,
     });
-    if (!zkLoginData) {
+    if (!payload?.data || typeof payload.data !== "string") {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "Invalid zkLoginJWE",
       });
     }
-    const zkProof = JSON.parse(zkLoginData.zkProof);
+    const zkLoginData = JSON.parse(payload.data) as {
+      zkProof: string;
+      addressSeed: string;
+      nonce: string;
+      ephemeralPrivateKey: string;
+      maxEpoch: number;
+      randomness: string;
+    };
+    const zkProof =
+      typeof zkLoginData.zkProof === "string"
+        ? JSON.parse(zkLoginData.zkProof)
+        : zkLoginData.zkProof;
 
     return {
       zkProof: zkProof as any,
-      addressSeed: zkLoginData.addressSeed as string,
-      nonce: zkLoginData.nonce as string,
-      ephemeralPrivateKey: zkLoginData.ephemeralPrivateKey as string,
-      maxEpoch: zkLoginData.maxEpoch as number,
-      randomness: zkLoginData.randomness as string,
+      addressSeed: zkLoginData.addressSeed,
+      nonce: zkLoginData.nonce,
+      ephemeralPrivateKey: zkLoginData.ephemeralPrivateKey,
+      maxEpoch: zkLoginData.maxEpoch,
+      randomness: zkLoginData.randomness,
     };
   }),
 });

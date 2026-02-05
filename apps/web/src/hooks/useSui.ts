@@ -36,12 +36,14 @@ export function useSui({ provider }: { provider: "zklogin" | "wallet" }) {
 
     const billIdBytes = Array.from(new TextEncoder().encode(billId));
 
+    const valuesU64 = values.map((v) => Math.round(Number(v)));
+
     txb.moveCall({
       target: `${env.NEXT_PUBLIC_SUI_PACKAGE_ID}${txTarget}`,
       arguments: [
         txb.pure.vector("u8", billIdBytes),
         txb.pure.vector("address", debtors),
-        txb.pure.vector("u64", values),
+        txb.pure.vector("u64", valuesU64),
       ],
     });
 
