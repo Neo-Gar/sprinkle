@@ -51,7 +51,7 @@ export function useSui({ provider }: { provider: "zklogin" | "wallet" }) {
     if (provider === "zklogin") {
       txb.setSender(authStore.zkLoginAddress!);
 
-      const transactionBytes = await txb.build();
+      const transactionBytes = await txb.build({ client: suiClient });
 
       const zkLoginSignature = await signWithZkLogin(
         transactionBytes,
