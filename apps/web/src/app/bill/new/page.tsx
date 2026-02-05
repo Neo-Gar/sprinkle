@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { AlertCircle, Loader2, Plus } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -74,6 +74,7 @@ export default function NewBillPage() {
   const [totalAmount, setTotalAmount] = useState("");
   const [payerAddress, setPayerAddress] = useState("");
   const [splits, setSplits] = useState<Record<string, MemberSplit>>({});
+  const [addMemberSelect, setAddMemberSelect] = useState("");
 
   type GroupItem = {
     id: string;
@@ -98,6 +99,16 @@ export default function NewBillPage() {
     [members, payerAddress],
   );
 
+  const addedMemberAddresses = useMemo(
+    () => Object.keys(splits).filter((addr) => nonPayerMembers.includes(addr)),
+    [splits, nonPayerMembers],
+  );
+
+  const availableToAdd = useMemo(
+    () => nonPayerMembers.filter((addr) => !splits[addr]),
+    [nonPayerMembers, splits],
+  );
+
   useEffect(() => {
     if (
       preselectedGroupId &&
@@ -117,24 +128,15 @@ export default function NewBillPage() {
 
   useEffect(() => {
     if (members.length === 0) return;
-    const total = parseFloat(totalAmount) || 0;
-    const equalShare =
-      total > 0 && nonPayerMembers.length > 0
-        ? round2(total / nonPayerMembers.length)
-        : 0;
+    setAddMemberSelect("");
     setSplits((prev) => {
       const next = { ...prev };
-      for (const addr of nonPayerMembers) {
-        if (!next[addr]) {
-          next[addr] = { mode: "amount", value: equalShare };
-        }
-      }
       for (const addr of Object.keys(next)) {
         if (!nonPayerMembers.includes(addr)) delete next[addr];
       }
       return next;
     });
-  }, [groupId, totalAmount, payerAddress, members.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [groupId, payerAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateSplit = useCallback(
     (address: string, mode: SplitMode, value: number) => {
@@ -143,10 +145,23 @@ export default function NewBillPage() {
     [],
   );
 
+  const addMember = useCallback((address: string) => {
+    setSplits((prev) => ({ ...prev, [address]: { mode: "amount", value: 0 } }));
+    setAddMemberSelect("");
+  }, []);
+
+  const removeMember = useCallback((address: string) => {
+    setSplits((prev) => {
+      const next = { ...prev };
+      delete next[address];
+      return next;
+    });
+  }, []);
+
   const computedAmounts = useMemo(() => {
     const total = parseFloat(totalAmount) || 0;
     const result: Record<string, number> = {};
-    for (const addr of nonPayerMembers) {
+    for (const addr of addedMemberAddresses) {
       const s = splits[addr];
       if (!s) continue;
       if (s.mode === "percent") {
@@ -156,7 +171,7 @@ export default function NewBillPage() {
       }
     }
     return result;
-  }, [nonPayerMembers, splits, totalAmount]);
+  }, [addedMemberAddresses, splits, totalAmount]);
 
   const sumSplits = useMemo(
     () => round2(Object.values(computedAmounts).reduce((a, b) => a + b, 0)),
@@ -165,8 +180,9 @@ export default function NewBillPage() {
 
   const totalNum = parseFloat(totalAmount) || 0;
   const isValidTotal = totalNum > 0;
+  const hasAtLeastOneDebtor = addedMemberAddresses.length > 0;
   const splitsMatchTotal =
-    nonPayerMembers.length === 0 ||
+    !hasAtLeastOneDebtor ||
     (isValidTotal && Math.abs(sumSplits - totalNum) < 0.02);
 
   const createBill = api.bill.createBill.useMutation({
@@ -184,16 +200,20 @@ export default function NewBillPage() {
     e.preventDefault();
     if (!userAddress || !isValidTotal || !splitsMatchTotal) return;
     const splitsRecord: Record<string, number> = {};
-    for (const [addr, amount] of Object.entries(computedAmounts)) {
+    for (const addr of addedMemberAddresses) {
+      const amount = computedAmounts[addr] ?? 0;
       if (amount > 0) splitsRecord[addr] = amount;
     }
 
     const billId = nanoid();
 
+    const debtors = addedMemberAddresses;
+    const values = debtors.map((addr) => computedAmounts[addr] ?? 0);
+
     const result = await createSuiBill({
       billId,
-      debtors: nonPayerMembers,
-      values: Object.values(computedAmounts),
+      debtors,
+      values,
     });
 
     const txDigest =
@@ -360,106 +380,160 @@ export default function NewBillPage() {
                       </Select>
                     </div>
 
-                    {nonPayerMembers.length > 0 && (
-                      <div className="space-y-3">
-                        <Label>Split between members</Label>
-                        <p className="text-muted-foreground text-xs">
-                          Sum must equal total amount ({totalNum.toFixed(2)})
-                        </p>
-                        <div
-                          className={cn(
-                            "rounded-md border p-2 text-sm",
-                            !splitsMatchTotal &&
-                              isValidTotal &&
-                              "border-destructive/50 bg-destructive/5",
-                          )}
-                        >
-                          Current sum: {sumSplits.toFixed(2)}
-                          {!splitsMatchTotal && isValidTotal && (
-                            <span className="text-destructive ml-2">
-                              (must be {totalNum.toFixed(2)})
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-3">
-                          {nonPayerMembers.map((addr) => {
-                            const s = splits[addr] ?? {
-                              mode: "amount" as SplitMode,
-                              value: 0,
-                            };
-                            const amount = computedAmounts[addr] ?? 0;
-                            return (
-                              <div
-                                key={addr}
-                                className="flex flex-wrap items-center gap-2 rounded-lg border p-3"
-                              >
-                                <span className="w-full shrink-0 text-sm font-medium sm:w-auto">
+                    <div className="space-y-3">
+                      <Label>Split between members</Label>
+                      <p className="text-muted-foreground text-xs">
+                        Add members who should share this bill. Sum must equal
+                        total amount ({totalNum.toFixed(2)}).
+                      </p>
+                      {availableToAdd.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Select
+                            value={addMemberSelect}
+                            onValueChange={(v) => {
+                              setAddMemberSelect(v);
+                              if (v) addMember(v);
+                            }}
+                          >
+                            <SelectTrigger className="w-full max-w-xs min-w-[12rem]">
+                              <span className="flex items-center gap-2">
+                                <UserPlus className="size-4" />
+                                <SelectValue placeholder="Add member" />
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableToAdd.map((addr) => (
+                                <SelectItem key={addr} value={addr}>
                                   {addr === userAddress ? (
-                                    <span className="bg-primary/15 text-primary inline-flex items-center rounded-md px-2 py-0.5">
-                                      You
-                                    </span>
+                                    <span className="font-medium">You</span>
                                   ) : (
-                                    <span className="text-foreground font-mono">
+                                    <span className="font-mono text-sm">
                                       {formatAddress(addr)}
                                     </span>
                                   )}
-                                </span>
-                                <Select
-                                  value={s.mode}
-                                  onValueChange={(v: SplitMode) =>
-                                    updateSplit(addr, v, s.value)
-                                  }
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {addedMemberAddresses.length > 0 && (
+                        <>
+                          <div
+                            className={cn(
+                              "rounded-md border p-2 text-sm",
+                              !splitsMatchTotal &&
+                                isValidTotal &&
+                                "border-destructive/50 bg-destructive/5",
+                            )}
+                          >
+                            Current sum: {sumSplits.toFixed(2)}
+                            {!splitsMatchTotal && isValidTotal && (
+                              <span className="text-destructive ml-2">
+                                (must be {totalNum.toFixed(2)})
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-3">
+                            {addedMemberAddresses.map((addr) => {
+                              const s = splits[addr] ?? {
+                                mode: "amount" as SplitMode,
+                                value: 0,
+                              };
+                              const amount = computedAmounts[addr] ?? 0;
+                              return (
+                                <div
+                                  key={addr}
+                                  className="flex flex-wrap items-center gap-2 rounded-lg border p-3"
                                 >
-                                  <SelectTrigger className="min-w-[7rem]">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="percent">
-                                      Percent
-                                    </SelectItem>
-                                    <SelectItem value="amount">
-                                      Amount
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                {s.mode === "percent" ? (
-                                  <div className="flex w-full min-w-0 flex-1 items-center gap-3">
-                                    <Slider
-                                      min={0}
-                                      max={100}
-                                      step={1}
-                                      value={[Math.round(s.value)]}
-                                      onValueChange={(v) =>
-                                        updateSplit(addr, "percent", v[0] ?? 0)
+                                  <span className="w-full shrink-0 text-sm font-medium sm:w-auto">
+                                    {addr === userAddress ? (
+                                      <span className="bg-primary/15 text-primary inline-flex items-center rounded-md px-2 py-0.5">
+                                        You
+                                      </span>
+                                    ) : (
+                                      <span className="text-foreground font-mono">
+                                        {formatAddress(addr)}
+                                      </span>
+                                    )}
+                                  </span>
+                                  <Select
+                                    value={s.mode}
+                                    onValueChange={(v: SplitMode) =>
+                                      updateSplit(addr, v, s.value)
+                                    }
+                                  >
+                                    <SelectTrigger className="min-w-[7rem]">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="percent">
+                                        Percent
+                                      </SelectItem>
+                                      <SelectItem value="amount">
+                                        Amount
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  {s.mode === "percent" ? (
+                                    <div className="flex w-full min-w-0 flex-1 items-center gap-3">
+                                      <Slider
+                                        min={0}
+                                        max={100}
+                                        step={1}
+                                        value={[Math.round(s.value)]}
+                                        onValueChange={(v) =>
+                                          updateSplit(
+                                            addr,
+                                            "percent",
+                                            v[0] ?? 0,
+                                          )
+                                        }
+                                      />
+                                      <span className="text-muted-foreground shrink-0 text-sm tabular-nums">
+                                        {Math.round(s.value)}% ={" "}
+                                        {amount.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      className="w-24"
+                                      value={s.value || ""}
+                                      onChange={(e) =>
+                                        updateSplit(
+                                          addr,
+                                          "amount",
+                                          parseFloat(e.target.value) || 0,
+                                        )
                                       }
                                     />
-                                    <span className="text-muted-foreground shrink-0 text-sm tabular-nums">
-                                      {Math.round(s.value)}% ={" "}
-                                      {amount.toFixed(2)}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    className="w-24"
-                                    value={s.value || ""}
-                                    onChange={(e) =>
-                                      updateSplit(
-                                        addr,
-                                        "amount",
-                                        parseFloat(e.target.value) || 0,
-                                      )
-                                    }
-                                  />
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-muted-foreground hover:text-destructive ml-auto shrink-0"
+                                    onClick={() => removeMember(addr)}
+                                    title="Remove from bill"
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                      {nonPayerMembers.length > 0 &&
+                        addedMemberAddresses.length === 0 && (
+                          <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-4 text-center text-sm">
+                            Add at least one member above to split the bill
+                          </p>
+                        )}
+                    </div>
                   </>
                 )}
 
@@ -481,6 +555,7 @@ export default function NewBillPage() {
                       !groupId ||
                       !description.trim() ||
                       !isValidTotal ||
+                      !hasAtLeastOneDebtor ||
                       !splitsMatchTotal ||
                       createBill.isPending ||
                       members.length <= 1
