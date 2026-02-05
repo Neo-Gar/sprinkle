@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 function getIdTokenFromHash(): string | null {
@@ -31,12 +31,13 @@ export default function ZkLoginCallbackPage() {
   const {
     mutate: authenticate,
     isPending,
+    isSuccess,
     isError,
     error,
   } = api.zkLogin.authenticate.useMutation({
     onSuccess: (data) => {
       authStore.setZkLoginAddress(data.zkLoginAddress);
-      router.push("/");
+      setTimeout(() => router.push("/"), 1500);
     },
     onError: (err) => {
       console.error(err);
@@ -92,6 +93,20 @@ export default function ZkLoginCallbackPage() {
         <Button asChild>
           <Link href="/login">Back to login</Link>
         </Button>
+      </div>
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <CheckCircle2 className="size-12 text-green-600" />
+          <h1 className="text-xl font-semibold">You're signed in!</h1>
+          <p className="text-muted-foreground max-w-sm text-sm">
+            Redirecting you to the app...
+          </p>
+        </div>
       </div>
     );
   }
