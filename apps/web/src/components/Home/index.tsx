@@ -11,33 +11,66 @@ import type { Bill } from "@/lib/types/bill";
 import { useSidebarStore } from "@/lib/store/sidebarStore";
 import { api } from "@/trpc/react";
 
+function formatAmount(amount: number, currency = "USD"): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export default function Home() {
   const account = useCurrentAccount();
-  const { selectedGroupId, showAllBills } = useSidebarStore();
-  const { data: bills } = api.bill.getBills.useQuery({
-    groupId: selectedGroupId ?? "",
-    userAddress: account?.address ?? "",
-  });
+  const userAddress = account?.address ?? "";
+  const { selectedGroupId, showAllBills, showMyDebts } = useSidebarStore();
+
+  const useAllBillsQuery = showAllBills || showMyDebts;
+  const { data: billsForUser } = api.bill.getBillsForUser.useQuery(
+    { userAddress, debtsOnly: showMyDebts },
+    { enabled: useAllBillsQuery && !!userAddress },
+  );
+  const { data: groupBills } = api.bill.getBills.useQuery(
+    { groupId: selectedGroupId ?? "", userAddress },
+    { enabled: !useAllBillsQuery && !!selectedGroupId },
+  );
 
   const filteredBills = useMemo(() => {
-    if (!bills) return [];
-    const withGroup = bills.filter((bill) => bill.group != null);
-    if (showAllBills) return withGroup;
-    if (selectedGroupId) {
-      return withGroup.filter((bill) => bill.groupId === selectedGroupId);
-    }
-    return [];
-  }, [selectedGroupId, showAllBills, bills]);
+    const list = useAllBillsQuery ? billsForUser ?? [] : groupBills ?? [];
+    return list.filter((bill) => bill.group != null);
+  }, [useAllBillsQuery, billsForUser, groupBills]);
 
-  const title = showAllBills ? "All Bills" : "Bills";
-  const showEmptyState = !showAllBills && !selectedGroupId;
+  const totalDebt = useMemo(() => {
+    return filteredBills.reduce(
+      (sum, b) => sum + (b.userAmount > 0 ? b.userAmount : 0),
+      0,
+    );
+  }, [filteredBills]);
+
+  const currency =
+    filteredBills.length > 0 ? filteredBills[0]!.currency : "USD";
+  const title = showMyDebts
+    ? "My debts"
+    : showAllBills
+      ? "All Bills"
+      : "Bills";
+  const showEmptyState = !showAllBills && !showMyDebts && !selectedGroupId;
+  const showPayAll =
+    totalDebt > 0 && (showMyDebts || (!!selectedGroupId && !showAllBills));
 
   return (
     <SidebarProvider>
       <MainSidebar />
       <SidebarInset>
         <div className="flex h-full flex-col gap-6 p-6">
-          <h1 className="text-2xl font-semibold">{title}</h1>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-2xl font-semibold">{title}</h1>
+            {showPayAll && (
+              <Button size="lg" className="w-full sm:w-auto">
+                Pay all {formatAmount(totalDebt, currency)}
+              </Button>
+            )}
+          </div>
           {showEmptyState ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-3">
               <p className="text-muted-foreground text-sm">
@@ -47,19 +80,23 @@ export default function Home() {
           ) : filteredBills.length === 0 ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-3">
               <p className="text-muted-foreground text-sm">
-                No bills in this group yet
+                {showMyDebts
+                  ? "You have no debts"
+                  : "No bills in this group yet"}
               </p>
-              <Button asChild>
-                <Link
-                  href={
-                    selectedGroupId
-                      ? `/bill/new?group=${selectedGroupId}`
-                      : "/bill/new"
-                  }
-                >
-                  Create bill
-                </Link>
-              </Button>
+              {!showMyDebts && (
+                <Button asChild>
+                  <Link
+                    href={
+                      selectedGroupId
+                        ? `/bill/new?group=${selectedGroupId}`
+                        : "/bill/new"
+                    }
+                  >
+                    Create bill
+                  </Link>
+                </Button>
+              )}
             </div>
           ) : (
             <div className="flex flex-wrap gap-6">

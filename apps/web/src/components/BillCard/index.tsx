@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -51,8 +52,14 @@ export default function BillCard({ bill, className }: BillCardProps) {
   );
 
   return (
-    <Card className={cn("w-full max-w-md", className)}>
-      <CardHeader className="gap-1 pb-2">
+    <Link href={`/bill/${bill.id}`} className="block">
+      <Card
+        className={cn(
+          "w-full max-w-md transition-colors hover:bg-muted/50 cursor-pointer",
+          className,
+        )}
+      >
+        <CardHeader className="gap-1 pb-2">
         <div className="flex items-center gap-2">
           <GroupIcon className="size-5 text-muted-foreground shrink-0" />
           <CardTitle className="text-base font-medium truncate">
@@ -72,6 +79,7 @@ export default function BillCard({ bill, className }: BillCardProps) {
           <span className={amountColor}>{amountDisplay}</span>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </Link>
   );
 }

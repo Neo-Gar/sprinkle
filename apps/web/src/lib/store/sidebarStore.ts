@@ -16,8 +16,9 @@ export const useSidebarStore = create<SidebarStore>()(
       selectedGroupId: null,
       showAllBills: false,
       showMyDebts: false,
-      setSelectedGroupId: (id) =>
-        set({ selectedGroupId: id, showAllBills: false }),
+      setSelectedGroupId: (id) => {
+        set({ selectedGroupId: id, showAllBills: false, showMyDebts: false });
+      },
       setShowAllBills: (show) => {
         if (get().showMyDebts) set({ showMyDebts: false });
         set({ showAllBills: show, selectedGroupId: show ? null : null });

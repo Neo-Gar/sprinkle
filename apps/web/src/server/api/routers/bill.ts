@@ -114,4 +114,96 @@ export const billRouter = createTRPCRouter({
         };
       });
     }),
+  getBillsForUser: publicProcedure
+    .input(
+      z.object({
+        userAddress: z.string(),
+        debtsOnly: z.boolean().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const groups = await db
+        .collection("groups")
+        .find({
+          members: input.userAddress,
+        })
+        .toArray();
+      const groupIds = groups.map((g) => g.id as string);
+      if (groupIds.length === 0) return [];
+      const bills = await db
+        .collection("bills")
+        .find({ groupId: { $in: groupIds } })
+        .toArray();
+      const groupMap = new Map(
+        groups.map((g) => [
+          g.id,
+          {
+            id: g.id as string,
+            name: g.name as string,
+            iconId: g.iconId as string,
+            membersCount: (g.members as string[])?.length ?? 0,
+            inviteLink: "",
+          },
+        ]),
+      );
+      const userAddr = input.userAddress;
+      const result = bills
+        .map((b) => {
+          const splits = (b.splits as Record<string, number>) ?? {};
+          const userAmount = splits[userAddr] ?? 0;
+          if (input.debtsOnly && userAmount <= 0) return null;
+          return {
+            id: b.id,
+            groupId: b.groupId,
+            description: b.description,
+            totalAmount: b.totalAmount,
+            currency: b.currency,
+            payerAddress: b.payerAddress,
+            group: groupMap.get(b.groupId as string) ?? null,
+            userAmount,
+            splits,
+          };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+      return result;
+    }),
+  getBill: publicProcedure
+    .input(
+      z.object({ id: z.string(), userAddress: z.string().optional() }),
+    )
+    .query(async ({ input }) => {
+      const b = await db.collection("bills").findOne({ id: input.id });
+      if (!b) return null;
+      const group = await db
+        .collection("groups")
+        .findOne(
+          { id: b.groupId as string },
+          { projection: { password: 0 } },
+        );
+      const members = (group?.members as string[] | undefined) ?? [];
+      const groupInfo = group
+        ? {
+            id: group.id as string,
+            name: group.name as string,
+            iconId: group.iconId as string,
+            membersCount: members.length,
+            inviteLink: "",
+          }
+        : null;
+      const splits = (b.splits as Record<string, number>) ?? {};
+      const userAddr = input.userAddress ?? "";
+      const userAmount = userAddr ? splits[userAddr] ?? 0 : 0;
+      return {
+        id: b.id,
+        groupId: b.groupId,
+        description: b.description,
+        totalAmount: b.totalAmount,
+        currency: b.currency,
+        payerAddress: b.payerAddress,
+        group: groupInfo,
+        userAmount,
+        splits,
+        createdAt: b.createdAt,
+      };
+    }),
 });
