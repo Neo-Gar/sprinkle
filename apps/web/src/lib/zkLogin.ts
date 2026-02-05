@@ -130,6 +130,7 @@ export async function getZkProof({
       keyClaimName: "sub",
     }),
   });
+  console.log("response", response);
   if (!response.ok) {
     throw new Error("Failed to get zk proof");
   }
