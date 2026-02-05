@@ -1,7 +1,7 @@
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { generateRandomness, generateNonce } from "@mysten/sui/zklogin";
-import { GRPC_URLS } from "./dapp-kit";
+import { SUI_TESTNET_GRPC_URL } from "./constants";
 
 export interface ZkProofRequest {
   jwt: string;
@@ -28,7 +28,7 @@ export interface ZkProofResponse {
 export async function initializeAuth() {
   const suiClient = new SuiGrpcClient({
     network: "testnet",
-    baseUrl: GRPC_URLS.testnet,
+    baseUrl: SUI_TESTNET_GRPC_URL,
   });
   const { systemState } = await suiClient.core.getCurrentSystemState();
 

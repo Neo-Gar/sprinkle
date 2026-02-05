@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
-import { initializeAuth } from "@/lib/zkLogin";
 import {
   getExtendedEphemeralPublicKey,
   jwtToAddress,
