@@ -9,6 +9,7 @@ import { SUI_TESTNET_GRPC_URL } from "@/lib/constants";
 import { env } from "@/env";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useDAppKit } from "@mysten/dapp-kit-react";
+import { fromBase64 } from "@mysten/bcs";
 
 export function useSui({ provider }: { provider: "zklogin" | "wallet" }) {
   const suiClient = new SuiGrpcClient({
@@ -51,18 +52,23 @@ export function useSui({ provider }: { provider: "zklogin" | "wallet" }) {
     if (provider === "zklogin") {
       txb.setSender(authStore.zkLoginAddress!);
 
-      const transactionBytes = await txb.build({ client: suiClient });
+      //   const transactionBytes = await txb.build({ client: suiClient });
 
-      const zkLoginSignature = await signWithZkLogin(
-        transactionBytes,
+      const { bytes, zkLoginSignature } = await signWithZkLogin(
+        suiClient,
+        txb,
         Ed25519Keypair.fromSecretKey(zkLoginData?.ephemeralPrivateKey!),
         zkLoginData?.zkProof!,
         zkLoginData?.addressSeed!,
         zkLoginData?.maxEpoch!,
       );
 
-      const result = await suiClient.core.executeTransaction({
-        transaction: transactionBytes,
+      //   const result = await suiClient.core.executeTransaction({
+      //     transaction: txb,
+      //     signatures: [zkLoginSignature],
+      //   });
+      const result = await suiClient.executeTransaction({
+        transaction: fromBase64(bytes),
         signatures: [zkLoginSignature],
       });
 
@@ -83,14 +89,20 @@ export function useSui({ provider }: { provider: "zklogin" | "wallet" }) {
 }
 
 const signWithZkLogin = async (
-  transactionBytes: Uint8Array,
+  suiClient: SuiGrpcClient,
+  transaction: Transaction,
   ephemeralKeyPair: Ed25519Keypair,
   zkProof: any,
   addressSeed: string,
   maxEpoch: number,
 ) => {
-  const { signature: userSignature } =
-    await ephemeralKeyPair.signTransaction(transactionBytes);
+  //   const { signature: userSignature } =
+  //     await ephemeralKeyPair.signTransaction(transactionBytes);
+
+  const { bytes, signature: userSignature } = await transaction.sign({
+    client: suiClient,
+    signer: ephemeralKeyPair,
+  });
 
   const zkLoginSignature = getZkLoginSignature({
     inputs: {
@@ -101,5 +113,8 @@ const signWithZkLogin = async (
     userSignature: userSignature,
   });
 
-  return zkLoginSignature;
+  return {
+    bytes,
+    zkLoginSignature,
+  };
 };
