@@ -4,17 +4,15 @@ import { Transaction } from "@mysten/sui/transactions";
 import { getZkLoginSignature } from "@mysten/sui/zklogin";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { api } from "@/trpc/react";
-import { SuiGrpcClient } from "@mysten/sui/grpc";
-import { SUI_TESTNET_GRPC_URL } from "@/lib/constants";
 import { env } from "@/env";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useDAppKit } from "@mysten/dapp-kit-react";
-import { fromBase64 } from "@mysten/bcs";
+import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 
 export function useSui({ provider }: { provider: "zklogin" | "wallet" }) {
-  const suiClient = new SuiGrpcClient({
+  const suiClient = new SuiJsonRpcClient({
     network: "testnet",
-    baseUrl: SUI_TESTNET_GRPC_URL,
+    url: getJsonRpcFullnodeUrl("testnet"),
   });
 
   const { data: zkLoginData } = api.zkLogin.getZkLoginData.useQuery(undefined, {
@@ -52,23 +50,18 @@ export function useSui({ provider }: { provider: "zklogin" | "wallet" }) {
     if (provider === "zklogin") {
       txb.setSender(authStore.zkLoginAddress!);
 
-      //   const transactionBytes = await txb.build({ client: suiClient });
+      const transactionBytes = await txb.build({ client: suiClient });
 
-      const { bytes, zkLoginSignature } = await signWithZkLogin(
-        suiClient,
-        txb,
+      const zkLoginSignature = await signWithZkLogin(
+        transactionBytes,
         Ed25519Keypair.fromSecretKey(zkLoginData?.ephemeralPrivateKey!),
         zkLoginData?.zkProof!,
         zkLoginData?.addressSeed!,
         zkLoginData?.maxEpoch!,
       );
 
-      //   const result = await suiClient.core.executeTransaction({
-      //     transaction: txb,
-      //     signatures: [zkLoginSignature],
-      //   });
-      const result = await suiClient.executeTransaction({
-        transaction: fromBase64(bytes),
+      const result = await suiClient.core.executeTransaction({
+        transaction: transactionBytes,
         signatures: [zkLoginSignature],
       });
 
@@ -89,20 +82,14 @@ export function useSui({ provider }: { provider: "zklogin" | "wallet" }) {
 }
 
 const signWithZkLogin = async (
-  suiClient: SuiGrpcClient,
-  transaction: Transaction,
+  transactionBytes: Uint8Array,
   ephemeralKeyPair: Ed25519Keypair,
   zkProof: any,
   addressSeed: string,
   maxEpoch: number,
 ) => {
-  //   const { signature: userSignature } =
-  //     await ephemeralKeyPair.signTransaction(transactionBytes);
-
-  const { bytes, signature: userSignature } = await transaction.sign({
-    client: suiClient,
-    signer: ephemeralKeyPair,
-  });
+  const { signature: userSignature } =
+    await ephemeralKeyPair.signTransaction(transactionBytes);
 
   const zkLoginSignature = getZkLoginSignature({
     inputs: {
@@ -113,8 +100,5 @@ const signWithZkLogin = async (
     userSignature: userSignature,
   });
 
-  return {
-    bytes,
-    zkLoginSignature,
-  };
+  return zkLoginSignature;
 };
