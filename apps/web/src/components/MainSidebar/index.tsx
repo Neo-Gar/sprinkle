@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,9 +20,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import GroupCard from "../GroupCard";
 import GroupSettingsDialog from "../GroupSettingsDialog";
 import {
+  Copy,
   CreditCard,
   Icon,
   Link2,
@@ -47,6 +57,9 @@ export default function MainSidebar() {
     });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { mutate: updateGroup } = api.group.updateGroup.useMutation();
   const { mutateAsync: createGroup } = api.group.createGroup.useMutation();
 
@@ -174,7 +187,7 @@ export default function MainSidebar() {
                 variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2"
-                onClick={handleCopyInviteLink}
+                onClick={() => setInviteLinkOpen(true)}
               >
                 <Link2 className="size-4" />
                 Invite link
@@ -267,6 +280,59 @@ export default function MainSidebar() {
         group={null}
         onCreate={handleCreateGroup}
       />
+
+      <AlertDialog
+        open={inviteLinkOpen}
+        onOpenChange={(open) => {
+          setInviteLinkOpen(open);
+          if (!open) {
+            setInviteLinkCopied(false);
+            if (copiedTimeoutRef.current) {
+              clearTimeout(copiedTimeoutRef.current);
+              copiedTimeoutRef.current = null;
+            }
+          }
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-md" size="default">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Invite link</AlertDialogTitle>
+          </AlertDialogHeader>
+          <Input
+            readOnly
+            value={`http://localhost:3000/invite/${selectedGroup?.id}?pass=${selectedGroup?.password}`}
+            className="py-3 font-mono text-sm"
+          />
+          <div className="flex w-full flex-row items-center justify-between">
+            <AlertDialogCancel
+              className="w-[20%]"
+              onClick={() => setInviteLinkOpen(false)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="default"
+              size="sm"
+              className="w-[75%] gap-2"
+              onClick={() => {
+                if (selectedGroup) {
+                  const link = `http://localhost:3000/invite/${selectedGroup.id}?pass=${selectedGroup.password}`;
+                  void navigator.clipboard.writeText(link);
+                  if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+                  setInviteLinkCopied(true);
+                  copiedTimeoutRef.current = setTimeout(
+                    () => setInviteLinkCopied(false),
+                    5000,
+                  );
+                }
+              }}
+            >
+              <Copy className="size-4" />
+              {inviteLinkCopied ? "Copied!" : "Copy"}
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
