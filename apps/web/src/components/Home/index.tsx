@@ -62,7 +62,9 @@ export default function Home() {
 
   const totalDebt = useMemo(() => {
     return filteredBills.reduce(
-      (sum, b) => sum + (b.userAmount > 0 ? b.userAmount : 0),
+      (sum, b) =>
+        sum +
+        (b.userAmount > 0 && !b.userHasPaid ? b.userAmount : 0),
       0,
     );
   }, [filteredBills]);

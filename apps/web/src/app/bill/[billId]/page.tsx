@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { api } from "@/trpc/react";
@@ -21,6 +22,7 @@ import {
   Receipt,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useSui } from "@/hooks/useSui";
@@ -64,6 +66,36 @@ export default function BillDetailsPage() {
 
   const debtForThisBill = userDebts?.find((d) => d.billId === billId);
   const debtId = debtForThisBill?.id ?? null;
+
+  const [isPaying, setIsPaying] = useState(false);
+  const utils = api.useUtils();
+  const recordPayment = api.bill.recordPayment.useMutation();
+
+  const handlePay = async () => {
+    if (!debtId) return;
+    setIsPaying(true);
+    try {
+      const result = await payDebt({ debtId });
+      const digest =
+        (result as { Transaction?: { digest?: string } })?.Transaction?.digest ??
+        (result as { digest?: string })?.digest;
+      if (digest && userAddress) {
+        await recordPayment.mutateAsync({
+          billId,
+          payerAddress: userAddress,
+          transactionDigest: digest,
+        });
+      }
+      toast.success("Payment sent successfully");
+      await utils.bill.getBill.invalidate({ id: billId, userAddress });
+      await utils.bill.getDebtsForUser.invalidate({ userAddress });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Payment failed";
+      toast.error(message);
+    } finally {
+      setIsPaying(false);
+    }
+  };
 
   if (!billId) {
     return (
@@ -154,22 +186,49 @@ export default function BillDetailsPage() {
               </p>
             ) : (
               <ul className="flex flex-col gap-2">
-                {splitEntries.map(([addr, amount]) => (
-                  <li
-                    key={addr}
-                    className={cn(
-                      "flex items-center justify-between rounded-lg border px-3 py-2",
-                      addr === userAddress && "border-primary/30 bg-primary/5",
-                    )}
-                  >
-                    <span className="font-mono text-sm">
-                      {addr === userAddress ? "You" : formatAddress(addr)}
-                    </span>
-                    <span className="font-medium tabular-nums">
-                      {formatAmount(amount, bill.currency)}
-                    </span>
-                  </li>
-                ))}
+                {splitEntries.map(([addr, amount]) => {
+                  const payment = bill.payments?.find(
+                    (p) => p.payerAddress === addr,
+                  );
+                  const isPaid = !!payment;
+                  return (
+                    <li
+                      key={addr}
+                      className={cn(
+                        "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2",
+                        addr === userAddress &&
+                          "border-primary/30 bg-primary/5",
+                      )}
+                    >
+                      <span className="font-mono text-sm">
+                        {addr === userAddress ? "You" : formatAddress(addr)}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {isPaid && (
+                          <span className="inline-flex items-center gap-1 rounded bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+                            <CheckCircle2 className="size-3.5" />
+                            Paid
+                          </span>
+                        )}
+                        {isPaid && payment?.transactionDigest && (
+                          <Button asChild variant="ghost" size="icon" className="size-8 shrink-0">
+                            <Link
+                              href={`https://suiscan.xyz/testnet/tx/${payment.transactionDigest}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Transaction"
+                            >
+                              <ExternalLink className="size-4" />
+                            </Link>
+                          </Button>
+                        )}
+                        <span className="font-medium tabular-nums">
+                          {formatAmount(amount, bill.currency)}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -179,9 +238,17 @@ export default function BillDetailsPage() {
               <Button
                 className="w-full"
                 size="lg"
-                onClick={() => payDebt({ debtId })}
+                onClick={handlePay}
+                disabled={isPaying}
               >
-                Pay {formatAmount(bill.userAmount, bill.currency)}
+                {isPaying ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="size-4 shrink-0 animate-spin" />
+                    Paying...
+                  </span>
+                ) : (
+                  <>Pay {formatAmount(bill.userAmount, bill.currency)}</>
+                )}
               </Button>
             )}
             <div className="flex gap-4">

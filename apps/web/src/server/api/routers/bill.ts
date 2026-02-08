@@ -102,9 +102,14 @@ export const billRouter = createTRPCRouter({
           }
         : null;
       const userAddr = input.userAddress ?? "";
+      const paymentsType = [] as { payerAddress: string; transactionDigest: string }[];
       return bills.map((b) => {
         const splits = (b.splits as Record<string, number>) ?? {};
         const userAmount = userAddr ? (splits[userAddr] ?? 0) : 0;
+        const payments = (b.payments as typeof paymentsType) ?? [];
+        const userHasPaid = userAddr
+          ? payments.some((p) => p.payerAddress === userAddr)
+          : false;
         return {
           id: b.id,
           groupId: b.groupId,
@@ -114,6 +119,7 @@ export const billRouter = createTRPCRouter({
           payerAddress: b.payerAddress,
           group: groupInfo,
           userAmount,
+          userHasPaid,
           splits,
           transactionDigest: b.transactionDigest as string | undefined,
         };
@@ -152,11 +158,14 @@ export const billRouter = createTRPCRouter({
         ]),
       );
       const userAddr = input.userAddress;
+      const paymentsType = [] as { payerAddress: string; transactionDigest: string }[];
       const result = bills
         .map((b) => {
           const splits = (b.splits as Record<string, number>) ?? {};
           const userAmount = splits[userAddr] ?? 0;
           if (input.debtsOnly && userAmount <= 0) return null;
+          const payments = (b.payments as typeof paymentsType) ?? [];
+          const userHasPaid = payments.some((p) => p.payerAddress === userAddr);
           return {
             id: b.id,
             groupId: b.groupId,
@@ -166,6 +175,7 @@ export const billRouter = createTRPCRouter({
             payerAddress: b.payerAddress,
             group: groupMap.get(b.groupId as string) ?? null,
             userAmount,
+            userHasPaid,
             splits,
             transactionDigest: b.transactionDigest as string | undefined,
           };
@@ -194,6 +204,7 @@ export const billRouter = createTRPCRouter({
       const splits = (b.splits as Record<string, number>) ?? {};
       const userAddr = input.userAddress ?? "";
       const userAmount = userAddr ? (splits[userAddr] ?? 0) : 0;
+      const payments = (b.payments as { payerAddress: string; transactionDigest: string }[]) ?? [];
       return {
         id: b.id,
         groupId: b.groupId,
@@ -204,9 +215,37 @@ export const billRouter = createTRPCRouter({
         group: groupInfo,
         userAmount,
         splits,
+        payments,
         createdAt: b.createdAt,
         transactionDigest: b.transactionDigest as string | undefined,
       };
+    }),
+  recordPayment: publicProcedure
+    .input(
+      z.object({
+        billId: z.string(),
+        payerAddress: z.string(),
+        transactionDigest: z.string(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const updated = await db
+        .collection("bills")
+        .findOneAndUpdate(
+          { id: input.billId },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          {
+            $push: {
+              payments: {
+                payerAddress: input.payerAddress,
+                transactionDigest: input.transactionDigest,
+              },
+            },
+          } as any,
+          { returnDocument: "after" },
+        );
+      if (!updated) return { success: false as const, error: "bill_not_found" };
+      return { success: true as const };
     }),
   getDebtsForUser: publicProcedure
     .input(z.object({ userAddress: z.string() }))

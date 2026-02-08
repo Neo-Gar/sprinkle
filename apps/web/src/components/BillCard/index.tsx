@@ -29,20 +29,25 @@ function formatAmount(amount: number, currency = "USD"): string {
 export default function BillCard({ bill, className }: BillCardProps) {
   const GroupIcon = getGroupIcon(bill.group.iconId);
 
-  // Determine state: owes (positive), gets back (negative), or settled (zero)
+  // Determine state: owes (positive), gets back (negative), or settled/paid (zero or paid)
   const owesUser = bill.userAmount < 0; // They owe user
-  const userOwes = bill.userAmount > 0; // User owes them
-  const isSettled = bill.userAmount === 0; // Settled up
+  const userHasPaid = bill.userHasPaid === true;
+  const userOwes = bill.userAmount > 0 && !userHasPaid; // User owes them (and not yet paid)
+  const isSettled = bill.userAmount === 0 || userHasPaid; // Settled up or paid
 
   const label = owesUser
     ? "You get back"
     : userOwes
       ? "You owe"
-      : "Settled up";
+      : userHasPaid
+        ? "Paid"
+        : "Settled up";
 
   const amountDisplay = owesUser
     ? `+${formatAmount(Math.abs(bill.userAmount), bill.currency)}`
-    : formatAmount(bill.userAmount, bill.currency);
+    : userHasPaid
+      ? formatAmount(bill.userAmount, bill.currency)
+      : formatAmount(bill.userAmount, bill.currency);
 
   const amountColor = cn(
     "text-3xl font-bold tabular-nums tracking-tight",
@@ -55,30 +60,30 @@ export default function BillCard({ bill, className }: BillCardProps) {
     <Link href={`/bill/${bill.id}`} className="block">
       <Card
         className={cn(
-          "w-full max-w-md transition-colors hover:bg-muted/50 cursor-pointer",
+          "hover:bg-muted/50 w-full max-w-md cursor-pointer transition-colors",
           className,
         )}
       >
         <CardHeader className="gap-1 pb-2">
-        <div className="flex items-center gap-2">
-          <GroupIcon className="size-5 text-muted-foreground shrink-0" />
-          <CardTitle className="text-base font-medium truncate">
-            {bill.group.name}
-          </CardTitle>
-        </div>
-        <CardDescription className="line-clamp-2">
-          {bill.description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4 pt-0">
-        <div className="text-muted-foreground text-sm">
-          Total: {formatAmount(bill.totalAmount, bill.currency)}
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-muted-foreground text-sm">{label}</span>
-          <span className={amountColor}>{amountDisplay}</span>
-        </div>
-      </CardContent>
+          <div className="flex items-center gap-2">
+            <GroupIcon className="text-muted-foreground size-5 shrink-0" />
+            <CardTitle className="truncate text-base font-medium">
+              {bill.group.name}
+            </CardTitle>
+          </div>
+          <CardDescription className="line-clamp-2">
+            {bill.description}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 pt-0">
+          <div className="text-muted-foreground text-sm">
+            Total: {formatAmount(bill.totalAmount, bill.currency)}
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-muted-foreground text-sm">{label}</span>
+            <span className={amountColor}>{amountDisplay}</span>
+          </div>
+        </CardContent>
       </Card>
     </Link>
   );
