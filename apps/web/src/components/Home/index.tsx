@@ -34,7 +34,7 @@ export default function Home() {
 
   const useAllBillsQuery = showAllBills || showMyDebts;
   const { data: billsForUser } = api.bill.getBillsForUser.useQuery(
-    { userAddress, debtsOnly: showMyDebts },
+    { userAddress },
     { enabled: useAllBillsQuery && !!userAddress },
   );
   const { data: groupBills } = api.bill.getBills.useQuery(
@@ -42,8 +42,24 @@ export default function Home() {
     { enabled: !useAllBillsQuery && !!selectedGroupId },
   );
 
+  const { data: userDebts } = api.bill.getDebtsForUser.useQuery(
+    { userAddress },
+    { enabled: !!userAddress },
+  );
+
+  console.log("userDebts", userDebts);
+  console.log("billsForUser", billsForUser);
+
   const filteredBills = useMemo(() => {
-    const list = useAllBillsQuery ? (billsForUser ?? []) : (groupBills ?? []);
+    const list = useAllBillsQuery
+      ? billsForUser
+        ? showMyDebts
+          ? billsForUser.filter((bill) =>
+              userDebts?.some((debt) => debt.billId === bill.id),
+            )
+          : billsForUser
+        : []
+      : (groupBills ?? []);
     return list.filter((bill) => bill.group != null);
   }, [useAllBillsQuery, billsForUser, groupBills]);
 

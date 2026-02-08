@@ -2,6 +2,9 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import clientPromise from "@/server/db";
 import { nanoid } from "nanoid";
+import { SuiGrpcClient } from "@mysten/sui/grpc";
+import { SUI_TESTNET_GRPC_URL } from "@/lib/constants";
+import { env } from "@/env";
 
 const client = await clientPromise;
 const db = client.db(process.env.MONGODB_DB);
@@ -204,5 +207,76 @@ export const billRouter = createTRPCRouter({
         createdAt: b.createdAt,
         transactionDigest: b.transactionDigest as string | undefined,
       };
+    }),
+  getDebtsForUser: publicProcedure
+    .input(z.object({ userAddress: z.string() }))
+    .query(async ({ input }) => {
+      const suiClient = new SuiGrpcClient({
+        network: "testnet",
+        baseUrl: SUI_TESTNET_GRPC_URL,
+      });
+
+      const debtsData = await suiClient.listOwnedObjects({
+        owner: input.userAddress,
+        type: `${env.NEXT_PUBLIC_SUI_PACKAGE_ID}::bill::Debt`,
+        include: {
+          json: true,
+        },
+      });
+
+      if (debtsData.objects.length === 0) return [];
+
+      /** bill_id on chain is vector<u8>; Sui JSON can return base64 string. DB stores nanoid string. */
+      function decodeBillId(raw: unknown): string {
+        if (typeof raw === "string") {
+          try {
+            const bytes = Buffer.from(raw, "base64");
+            if (bytes.length > 0) return bytes.toString("utf8");
+          } catch {
+            // not base64, use as is
+          }
+          return raw;
+        }
+        if (Array.isArray(raw)) {
+          const bytes = raw as number[];
+          return new TextDecoder().decode(new Uint8Array(bytes));
+        }
+        if (
+          raw &&
+          typeof raw === "object" &&
+          "data" in (raw as Record<string, unknown>)
+        ) {
+          const b64 = (raw as { data: string }).data;
+          if (typeof b64 === "string") {
+            return Buffer.from(b64, "base64").toString("utf8");
+          }
+        }
+        return "";
+      }
+
+      const result: {
+        id: string;
+        billId: string;
+        creditor: string;
+        value: number;
+      }[] = [];
+
+      for (const obj of debtsData.objects) {
+        const json = obj?.json as Record<string, unknown> | null | undefined;
+        if (!json) continue;
+        const fields = (json.fields as Record<string, unknown>) ?? json;
+        const rawBillId = fields.bill_id;
+        const billId = decodeBillId(rawBillId);
+        if (!billId) continue;
+        const id =
+          (fields.id as { id?: string })?.id ??
+          (fields.id as string) ??
+          "";
+        const creditor = String(fields.creditor ?? "");
+        const value = Number(fields.value) ?? 0;
+        result.push({ id, billId, creditor, value });
+      }
+
+      return result;
     }),
 });
