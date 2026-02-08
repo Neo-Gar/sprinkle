@@ -32,6 +32,7 @@ import {
 } from "../ui/alert-dialog";
 import GroupCard from "../GroupCard";
 import GroupSettingsDialog from "../GroupSettingsDialog";
+import Logo from "../Logo";
 import {
   Copy,
   CreditCard,
@@ -73,7 +74,9 @@ export default function MainSidebar() {
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const addressCopiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const addressCopiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const { mutate: updateGroup } = api.group.updateGroup.useMutation();
   const { mutateAsync: createGroup } = api.group.createGroup.useMutation();
 
@@ -156,6 +159,9 @@ export default function MainSidebar() {
     <>
       <Sidebar>
         <SidebarHeader className="p-5">
+          <div className="mb-3 flex justify-center">
+            <Logo size="md" />
+          </div>
           <Select
             value={selectedGroupId || undefined}
             onValueChange={handleGroupChange}
@@ -314,8 +320,7 @@ export default function MainSidebar() {
             disabled={!userAddress}
             className={cn(
               "flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-base font-medium transition-colors",
-              userAddress &&
-                "hover:bg-muted active:bg-muted/80 cursor-pointer",
+              userAddress && "hover:bg-muted active:bg-muted/80 cursor-pointer",
               !userAddress && "cursor-default opacity-70",
             )}
             title={userAddress ? "Copy address" : undefined}
@@ -324,9 +329,7 @@ export default function MainSidebar() {
               <span className="text-primary">Copied</span>
             ) : userAddress ? (
               <>
-                <span className="truncate">
-                  {formatAddress(userAddress)}
-                </span>
+                <span className="truncate">{formatAddress(userAddress)}</span>
                 <Copy className="text-muted-foreground size-3.5 shrink-0" />
               </>
             ) : (

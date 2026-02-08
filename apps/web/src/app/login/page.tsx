@@ -8,6 +8,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import Logo from "@/components/Logo";
 import { useEffect } from "react";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import { useRouter } from "next/navigation";
@@ -61,7 +62,7 @@ export default function LoginPage() {
   }, [userAddress]);
   return (
     <main className="flex h-screen w-full flex-col items-center justify-between py-70">
-      <span className="mx-auto text-4xl font-bold">Sprinkle</span>
+      <span className="text-4xl font-bold">Sprinkle</span>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="mx-auto text-2xl font-bold">Login</CardTitle>

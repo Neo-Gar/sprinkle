@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { Button } from "@/components/ui/button";
+import Logo from "@/components/Logo";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -83,6 +84,7 @@ export default function ZkLoginCallbackPage() {
   if (hasError && errorMessage) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+        <Logo size="md" className="absolute top-4 left-4" />
         <div className="flex flex-col items-center gap-4 text-center">
           <AlertCircle className="text-destructive size-12" />
           <h1 className="text-xl font-semibold">Sign in failed</h1>
@@ -100,6 +102,7 @@ export default function ZkLoginCallbackPage() {
   if (isSuccess) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+        <Logo size="md" className="absolute top-4 left-4 opacity-70" />
         <div className="flex flex-col items-center gap-4 text-center">
           <CheckCircle2 className="size-12 text-green-600" />
           <h1 className="text-xl font-semibold">You're signed in!</h1>
@@ -113,6 +116,7 @@ export default function ZkLoginCallbackPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+      <Logo size="md" className="absolute top-4 left-4 opacity-70" />
       <Loader2 className="text-muted-foreground size-12 animate-spin" />
       <div className="flex flex-col items-center gap-2 text-center">
         <p className="font-medium">Signing you in...</p>
