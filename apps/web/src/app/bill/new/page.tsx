@@ -476,7 +476,22 @@ export default function NewBillPage() {
                                       </SelectItem>
                                     </SelectContent>
                                   </Select>
-                                  {s.mode === "percent" ? (
+                                  {s.mode === "amount" ? (
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      className="w-24"
+                                      value={s.value || ""}
+                                      onChange={(e) =>
+                                        updateSplit(
+                                          addr,
+                                          "amount",
+                                          parseFloat(e.target.value) || 0,
+                                        )
+                                      }
+                                    />
+                                  ) : (
                                     <div className="flex w-full min-w-0 flex-1 items-center gap-3">
                                       <Slider
                                         min={0}
@@ -496,21 +511,6 @@ export default function NewBillPage() {
                                         {amount.toFixed(2)}
                                       </span>
                                     </div>
-                                  ) : (
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      step="0.01"
-                                      className="w-24"
-                                      value={s.value || ""}
-                                      onChange={(e) =>
-                                        updateSplit(
-                                          addr,
-                                          "amount",
-                                          parseFloat(e.target.value) || 0,
-                                        )
-                                      }
-                                    />
                                   )}
                                   <Button
                                     type="button"
