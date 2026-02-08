@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/authStore";
+import { useSui } from "@/hooks/useSui";
 
 function formatAmount(amount: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
@@ -38,6 +39,9 @@ export default function BillDetailsPage() {
   const billId = params.billId as string;
   const account = useCurrentAccount();
   const authStore = useAuthStore();
+  const { payDebt } = useSui({
+    provider: authStore.zkLoginAddress ? "zklogin" : "wallet",
+  });
   const userAddress = authStore.zkLoginAddress
     ? authStore.zkLoginAddress
     : account?.address
@@ -52,6 +56,14 @@ export default function BillDetailsPage() {
     { id: billId, userAddress },
     { enabled: !!billId },
   );
+
+  const { data: userDebts } = api.bill.getDebtsForUser.useQuery(
+    { userAddress },
+    { enabled: !!userAddress && !!billId },
+  );
+
+  const debtForThisBill = userDebts?.find((d) => d.billId === billId);
+  const debtId = debtForThisBill?.id ?? null;
 
   if (!billId) {
     return (
@@ -163,8 +175,12 @@ export default function BillDetailsPage() {
           </div>
 
           <div className="flex flex-col gap-4 pt-2">
-            {bill.userAmount > 0 && (
-              <Button className="w-full" size="lg">
+            {bill.userAmount > 0 && debtId && (
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => payDebt({ debtId })}
+              >
                 Pay {formatAmount(bill.userAmount, bill.currency)}
               </Button>
             )}

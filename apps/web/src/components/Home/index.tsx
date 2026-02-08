@@ -47,9 +47,6 @@ export default function Home() {
     { enabled: !!userAddress },
   );
 
-  console.log("userDebts", userDebts);
-  console.log("billsForUser", billsForUser);
-
   const filteredBills = useMemo(() => {
     const list = useAllBillsQuery
       ? billsForUser

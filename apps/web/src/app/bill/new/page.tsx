@@ -226,6 +226,7 @@ export default function NewBillPage() {
       groupId,
       description: description.trim(),
       totalAmount: totalNum,
+      currency: "SUI",
       payerAddress,
       splits: splitsRecord,
       transactionDigest: txDigest,
@@ -333,15 +334,15 @@ export default function NewBillPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="total">Total amount</Label>
+                  <Label htmlFor="total">Total amount (SUI)</Label>
                   <Input
                     id="total"
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="0.000000001"
                     value={totalAmount}
                     onChange={(e) => setTotalAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder="0"
                     required
                   />
                 </div>
@@ -384,7 +385,7 @@ export default function NewBillPage() {
                       <Label>Split between members</Label>
                       <p className="text-muted-foreground text-xs">
                         Add members who should share this bill. Sum must equal
-                        total amount ({totalNum.toFixed(2)}).
+                        total amount ({totalNum.toFixed(9)} SUI).
                       </p>
                       {availableToAdd.length > 0 && (
                         <div className="flex flex-wrap items-center gap-2">

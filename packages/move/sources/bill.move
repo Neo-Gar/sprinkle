@@ -60,10 +60,10 @@ public entry fun create_bill(
     };
 }
 
-/// This function pays a debt and transfers the coin to the creditor
+/// This function pays a debt and transfers the coin to the creditor.
 #[allow(lint(public_entry))]
 public entry fun pay_debt(debt: Debt, coin: Coin<SUI>, ctx: &mut TxContext) {
-    assert!(debt.creditor == ctx.sender(), ErrorSelfPaying);
+    assert!(debt.creditor != ctx.sender(), ErrorSelfPaying);
     assert!(coin.value() == debt.value, ErrorInvalidCoinValue);
 
     let paid_value = coin.value();
